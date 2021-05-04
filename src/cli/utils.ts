@@ -27,7 +27,7 @@ import 'clarify';
 Error.stackTraceLimit = 20;
 
 import { Docker, Options } from 'docker-cli-js';
-export const docker = new Docker(new Options(undefined, undefined, true));
+export const docker = new Docker(new Options('default', undefined, true));
 
 import { EOSManager } from '../eosManager';
 import { sleep } from '../utils';
@@ -116,12 +116,14 @@ export const buildImage = async () => {
 			' '
 		)}
 		
+		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
+
 		RUN wget https://github.com/eosio/eosio.cdt/releases/download/v1.6.3/eosio.cdt_1.6.3-1-ubuntu-18.04_amd64.deb && apt-get install -y ./*.deb && rm -f *.deb
-		RUN git clone --depth 1 --branch release/1.8.x https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts_v_1_8_x &&\
-		cd /usr/opt/eosio.contracts_v_1_8_x && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
+		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
+			git clone --depth 1 --branch release/1.8.x https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts &&\
+		cd /usr/opt/eosio.contracts && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
 
 		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
-		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
 			git clone --depth 1 --branch ${
 				ConfigManager.contracts
