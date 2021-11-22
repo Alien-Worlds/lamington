@@ -152,8 +152,10 @@ export class ConfigManager {
 		if (
 			(await ConfigManager.configExists(atPath)) &&
 			(await ConfigManager.isValidConfig(ConfigManager.config))
-		)
+		) {
+			console.log('Config already exists. No Need to fetch');
 			return;
+		}
 		// Create the config directory
 		await mkdirp(CACHE_DIRECTORY, {});
 		// Fetch the latest repository configuration

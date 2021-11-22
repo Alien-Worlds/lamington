@@ -27,7 +27,8 @@ import 'clarify';
 Error.stackTraceLimit = 20;
 
 import { Docker, Options } from 'docker-cli-js';
-export const docker = new Docker(new Options('default', undefined, true));
+// export const docker = new Docker(new Options('default', undefined, true));
+export const docker = new Docker(new Options(undefined, undefined, true));
 
 import { EOSManager } from '../eosManager';
 import { sleep } from '../utils';
@@ -119,10 +120,7 @@ export const buildImage = async () => {
 		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
 
 		RUN wget https://github.com/eosio/eosio.cdt/releases/download/v1.6.3/eosio.cdt_1.6.3-1-ubuntu-18.04_amd64.deb && apt-get install -y ./*.deb && rm -f *.deb
-		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
-			git clone --depth 1 --branch release/1.8.x https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts &&\
-		cd /usr/opt/eosio.contracts && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
-
+		
 		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
 			git clone --depth 1 --branch ${
@@ -313,11 +311,11 @@ export const runTests = async (options?: { grep?: string }) => {
 	// Find all existing test file paths
 	const files = [
 		// All ts and js files under the test folder get added.
-		...(await glob('{test,tests}/**/*.{js,ts}')),
+		// ...(await glob('{test,tests}/**/*.{js,ts}')),
 
 		// Any .test.ts, .test.js, .spec.ts, .spec.js files anywhere in the working tree
 		// outside of node_modules get added.
-		...(await glob('!(node_modules)/**/*.{test,spec}.{js,ts}')),
+		...(await glob('**/contracts/**/*.{test,spec}.{js,ts}')),
 	];
 
 	// Instantiate a Mocha instance.

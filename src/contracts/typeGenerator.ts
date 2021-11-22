@@ -81,7 +81,7 @@ export const mapParameterType = ({
 
 			// second = findType({ contractStructs, contractName, key: second });
 
-			resultType = `{ key: ${first}; value: ${second} }`;
+			resultType = `{ first: ${first}; second: ${second} }`;
 		} else {
 			resultType = findType(parameterType);
 		}

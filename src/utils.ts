@@ -233,13 +233,13 @@ export const assertEOSErrorIncludesMessage = async (
 			}
 			assert(
 				errorMessage.includes(message),
-				`Expected to include ${message}, got ${errorMessage} instead.`
+				`Expected to include \"${message}\", got \"${errorMessage}\" instead.`
 			);
 		}))
 	) {
 		// Fail if no exception thrown
 		assert.fail(
-			`Expected ${eosErrorName} with message to include ${message} but operation completed successfully.`
+			`Expected ${eosErrorName} with message to include \"${message}\" but operation completed successfully.`
 		);
 	}
 };

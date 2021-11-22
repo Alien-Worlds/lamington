@@ -31,7 +31,6 @@ done
 syskey_pub=EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 syskey_priv=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 contracts_dir=/usr/opt/eosio.contracts/build/contracts
-contracts_dir_v_1_8_x=/usr/opt/eosio.contracts_v_1_8_x/build/contracts
 
 old_system_hash="code hash: ae4dc08870aba3623da3dcba102ccdfad7198a4d2a6b4d9fd32681158e6cc5ca"
 
@@ -62,7 +61,7 @@ sleep 0.5s
 echo "=== lamington: install the old system contract after first protocol activation ==="
 until [[ $(cleos get code eosio) == $old_system_hash ]]
 do
-  cleos set contract eosio "$contracts_dir_v_1_8_x/eosio.system" -p eosio@active
+  cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
   sleep 0.5s
 done
 
