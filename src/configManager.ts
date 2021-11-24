@@ -32,9 +32,26 @@ export interface LamingtonConfig {
 	exclude?: Array<string>;
 	debugTransactions?: boolean;
 	debug: LamingtonDebugLevel;
-	reporter?: string;
+	reporter?: any;
 	reporterOptions?: any;
 	bailOnFailure: boolean;
+	skipSystemContracts: boolean;
+}
+
+export interface DefaultLamingtonConfig {
+	cdt: string;
+	eos: string;
+	contracts: string;
+	keepAlive?: boolean;
+	outDir: string;
+	include: Array<string>;
+	exclude: Array<string>;
+	debugTransactions: boolean;
+	debug: LamingtonDebugLevel;
+	reporter: any;
+	reporterOptions: any;
+	bailOnFailure: boolean;
+	skipSystemContracts: boolean;
 }
 
 /**
@@ -65,7 +82,7 @@ export namespace LamingtonDebugLevel {
  * as the base layer config. Users can override these
  * values by specifying them in their `.lamingtonrc`
  */
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	eos: '',
 	cdt: '',
 	contracts: 'v1.8.0-rc1',
@@ -76,6 +93,9 @@ const DEFAULT_CONFIG = {
 	include: ['.*'],
 	exclude: [],
 	bailOnFailure: false,
+	skipSystemContracts: true,
+	reporter: Mocha.reporters.Min,
+	reporterOptions: 0,
 };
 
 /**
@@ -295,12 +315,23 @@ export class ConfigManager {
 	}
 
 	/**
-	 * Returns the array of excluded strings or patterns
+	 * Returns a boolean to determine if the test run should terminate on the first test failure.
 	 * @author Dallas Johnson <github.com/dallasjohnson>
 	 */
 	static get bailOnFailure() {
 		return (
 			(ConfigManager.config && ConfigManager.config.bailOnFailure) || DEFAULT_CONFIG.bailOnFailure
+		);
+	}
+
+	/**
+	 * Returns a boolean to determine if the system contract installation should be skipped
+	 * @author Dallas Johnson <github.com/dallasjohnson>
+	 */
+	static get skipSystemContracts() {
+		return (
+			(ConfigManager.config && ConfigManager.config.skipSystemContracts) ||
+			DEFAULT_CONFIG.skipSystemContracts
 		);
 	}
 }

@@ -118,9 +118,6 @@ export const buildImage = async () => {
 		)}
 		
 		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
-
-		RUN wget https://github.com/eosio/eosio.cdt/releases/download/v1.6.3/eosio.cdt_1.6.3-1-ubuntu-18.04_amd64.deb && apt-get install -y ./*.deb && rm -f *.deb
-		
 		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
 			git clone --depth 1 --branch ${
@@ -162,7 +159,9 @@ export const startContainer = async () => {
 				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
 				-w "/opt/eosio/bin/"
 				${await dockerImageName()}
-				/bin/bash -c "./scripts/init_blockchain.sh"`
+				/bin/bash -c "./scripts/${
+					ConfigManager.skipSystemContracts ? 'init_blockchain_wo_system.sh' : 'init_blockchain.sh'
+				}"`
 			.replace(/\n/gm, '')
 			.replace(/\t/gm, ' ')
 	);
@@ -400,19 +399,25 @@ const onlyMatches = (paths: string[], matches: string[] = []) => {
 
 const includeMatches = (paths: string[]) => {
 	return paths.filter((filePath) => {
-		return ConfigManager.include.reduce<boolean>((result, match) => {
-			const pattern = new RegExp(match, 'gi');
-			return result || pattern.test(filePath);
-		}, false);
+		return (
+			ConfigManager.include &&
+			ConfigManager.include.reduce<boolean>((result, match) => {
+				const pattern = new RegExp(match, 'gi');
+				return result || pattern.test(filePath);
+			}, false)
+		);
 	});
 };
 
 const filterMatches = (paths: string[]) => {
 	return paths.filter((filePath) => {
-		return !ConfigManager.exclude.reduce<boolean>((result, match) => {
-			const pattern = new RegExp(match, 'gi');
-			return result || pattern.test(filePath);
-		}, false);
+		return (
+			ConfigManager.exclude &&
+			!ConfigManager.exclude.reduce<boolean>((result, match) => {
+				const pattern = new RegExp(match, 'gi');
+				return result || pattern.test(filePath);
+			}, false)
+		);
 	});
 };
 
