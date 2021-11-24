@@ -108,6 +108,13 @@ export const buildImage = async () => {
 
 	// Write a Dockerfile so Docker knows what to build.
 	const systemDeps = ['build-essential', 'ca-certificates', 'cmake', 'curl', 'git', 'wget'];
+
+	const sysContractsDockerCommands = ConfigManager.skipSystemContracts
+		? ''
+		: `RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
+	git clone --depth 1 --branch ${ConfigManager.contracts} https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts &&\
+	cd /usr/opt/eosio.contracts && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
+`;
 	await writeFile(
 		path.join(TEMP_DOCKER_DIRECTORY, 'Dockerfile'),
 		`
@@ -119,12 +126,7 @@ export const buildImage = async () => {
 		
 		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
 		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
-		RUN eos_ver=$(ls /usr/opt/eosio | head -n 1); \
-			git clone --depth 1 --branch ${
-				ConfigManager.contracts
-			} https://github.com/EOSIO/eosio.contracts.git /usr/opt/eosio.contracts &&\
-			cd /usr/opt/eosio.contracts && ./build.sh -e "/usr/opt/eosio/$eos_ver" -c /usr/opt/eosio.cdt
-
+		${sysContractsDockerCommands}
 
 		RUN apt-get clean && rm -rf /tmp/* /var/tmp/* && rm -rf /var/lib/apt/lists/*
 		`.replace(/\t/gm, '')
