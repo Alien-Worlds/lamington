@@ -5,7 +5,7 @@
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",
 	"scripts": {
-		"build": "npm run clean && tsc && npm run copy:scripts && npm run copy:configs",
+		"build": "tsc && npm run copy:scripts && npm run copy:configs",
 		"changelog": "auto-changelog --commit-limit false",
 		"check:types": "tsc --noEmit",
 		"copy:scripts": "cp -r ./src/scripts/ ./lib/scripts/",
