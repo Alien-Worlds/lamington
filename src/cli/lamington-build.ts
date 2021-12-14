@@ -1,6 +1,13 @@
 import { eosIsReady, startEos, stopContainer, buildAll } from './utils';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { ConfigManager } from '../configManager';
+const { Command } = require('commander');
+const program = new Command();
+
+program
+	.option('-p, --contract_path [value...]')
+	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
+	.parse(process.argv);
 
 /**
  * Executes a contract build procedure
@@ -9,8 +16,6 @@ import { ConfigManager } from '../configManager';
  * @author Mitch Pierias <github.com/MitchPierias>
  */
 const run = async () => {
-	// Capture CLI defined contract identifiers
-	const contract = process.argv[2];
 	// Initialize Lamington configuration
 	await ConfigManager.initWithDefaults();
 	// Start the EOSIO container image if it's not running.
@@ -18,7 +23,7 @@ const run = async () => {
 		await startEos();
 	}
 	// Build all smart contracts
-	await buildAll([contract]);
+	await buildAll(program.contract_path, program.defines);
 	// And stop it if we don't have keepAlive set.
 	if (!ConfigManager.keepAlive) {
 		await stopContainer();

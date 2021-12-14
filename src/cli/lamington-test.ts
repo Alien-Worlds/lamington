@@ -8,6 +8,7 @@ const program = new Command();
 program
 	.option('-g, --grep <value>', 'grep pattern to pass to Mocha')
 	.option('-s, --skip-build', 'Skip building the smart contracts and just run the tests')
+	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
 	.parse(process.argv);
 
 // const options = prog.args;
@@ -23,7 +24,6 @@ console.log('Running tests with skipBuild:', program.skipBuild);
 const run = async (options: { grep?: string | undefined } | undefined) => {
 	// Initialize the configuration
 	await ConfigManager.initWithDefaults();
-	const args = process.argv;
 
 	// Stop running instances for fresh test environment
 	if (await eosIsReady()) {
@@ -36,7 +36,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll();
+		await buildAll(undefined, program.defines);
 	} else {
 		await sleep(500);
 	}
