@@ -77,7 +77,22 @@ export class AccountManager {
 	 * @param options Optional account settings
 	 * @returns Transaction result promise
 	 */
-	static setupAccount = async (account: Account, options?: AccountCreationOptions) => {
+	static setupAccount = async (
+		account: Account,
+		options?: AccountCreationOptions,
+		existsOkay = true
+	) => {
+		if (existsOkay) {
+			try {
+				await EOSManager.rpc.get_account(account.name);
+				if (ConfigManager.debugLevelMin || ConfigManager.debugLevelVerbose) {
+					console.log(
+						chalk.cyan(`setupAccount: Account ${account.name} already exists, doing nothing.`)
+					);
+				}
+				return;
+			} catch (e) {}
+		}
 		let logMessage = `Create account: ${account.name}`;
 		if (options?.privateKey) {
 			logMessage += ` private key: ${options.privateKey} `;
