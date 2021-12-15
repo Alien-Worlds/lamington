@@ -82,31 +82,39 @@ export class ContractDeployer {
 		);
 		// Serialize ABI type definitions
 		abiDefinition.serialize(buffer, abi);
-		// Set the contract code for the account
-		await EOSManager.transact({
-			actions: [
-				{
-					account: 'eosio',
-					name: 'setcode',
-					authorization: account.active,
-					data: {
-						account: account.name,
-						vmtype: 0,
-						vmversion: 0,
-						code: wasm.toString('hex'),
+
+		try {
+			// Set the contract code for the account
+			await EOSManager.transact({
+				actions: [
+					{
+						account: 'eosio',
+						name: 'setcode',
+						authorization: account.active,
+						data: {
+							account: account.name,
+							vmtype: 0,
+							vmversion: 0,
+							code: wasm.toString('hex'),
+						},
 					},
-				},
-				{
-					account: 'eosio',
-					name: 'setabi',
-					authorization: account.active,
-					data: {
-						account: account.name,
-						abi: Buffer.from(buffer.asUint8Array()).toString(`hex`),
+					{
+						account: 'eosio',
+						name: 'setabi',
+						authorization: account.active,
+						data: {
+							account: account.name,
+							abi: Buffer.from(buffer.asUint8Array()).toString(`hex`),
+						},
 					},
-				},
-			],
-		});
+				],
+			});
+		} catch (e) {
+			/* If this exact version of the contract is already deployed, the error can safely be ignored */
+			if (e.json.error.what != 'Contract is already running this version of code') {
+				throw e;
+			}
+		}
 
 		return await ContractLoader.at<T>(account);
 	}
