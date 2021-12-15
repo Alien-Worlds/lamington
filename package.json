@@ -64,6 +64,7 @@
 		"eosjs-ecc": "4.0.7",
 		"prettier": "2.0.5",
 		"ts-node": "8.10.2",
+		"tsc-watch": "^4.5.0",
 		"typedoc": "^0.20.34",
 		"typescript": "3.9.7"
 	},
