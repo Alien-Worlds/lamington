@@ -156,6 +156,7 @@ export const startContainer = async () => {
 				-d
 				-p 8888:8888
 				-p 9876:9876
+				--platform linux/amd64
 				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
 				--mount type=bind,src="${__dirname}/../scripts",dst=/opt/eosio/bin/scripts
 				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
@@ -350,15 +351,25 @@ export const runTests = async (options?: { grep?: string }) => {
  * Finds and builds all C++ contracts
  * @author Kevin Brown <github.com/thekevinbrown>
  * @author Mitch Pierias <github.com/MitchPierias>
- * @param match Optional specific contract identifiers to build
+ * @param path_match Optional specific contract identifiers to build
  */
-export const buildAll = async (match?: string[]) => {
+export const buildAll = async (path_match?: string[], contracts_match?: string[]) => {
 	// Find all contract files
 	const errors = [];
 	let contracts = await glob('!(node_modules)/**/*.cpp');
 	// Cleanse ignored contracts
-	contracts = filterMatches(includeMatches(onlyMatches(contracts, match || ['\\.cpp$'])));
 
+	// get all globs in the contract path
+	contracts = getMatches(contracts, path_match || ['\\.cpp$']);
+	if (contracts_match) {
+		contracts = getMatches(contracts, contracts_match, true);
+	} else {
+		// get all globs in the config.includes
+		contracts = getMatches(contracts, ConfigManager.include, true);
+
+		// get all globs excluding the ones in the Config.exclude
+		contracts = getMatches(contracts, ConfigManager.exclude, false);
+	}
 	if (contracts.length === 0) {
 		console.error();
 		console.error('Could not find any smart contracts to build.');
@@ -390,38 +401,23 @@ export const buildAll = async (match?: string[]) => {
 	}
 };
 
-const onlyMatches = (paths: string[], matches: string[] = []) => {
+const getMatches = (paths: string[], matches: string[] = [], include: boolean = true) => {
 	return paths.filter((filePath) => {
-		return matches.reduce<boolean>((result, str) => {
-			const pattern = new RegExp(str, 'gi');
+		const foundMatches = matches.reduce<boolean>((result, match) => {
+			const pattern = new RegExp(match, 'gi');
 			return result || pattern.test(filePath);
 		}, false);
+		return include ? foundMatches : !foundMatches;
 	});
 };
 
-const includeMatches = (paths: string[]) => {
-	return paths.filter((filePath) => {
-		return (
-			ConfigManager.include &&
-			ConfigManager.include.reduce<boolean>((result, match) => {
-				const pattern = new RegExp(match, 'gi');
-				return result || pattern.test(filePath);
-			}, false)
-		);
-	});
-};
+// const includeMatches = (paths: string[]) => {
+// 	return getMatches(paths, ConfigManager.include, true);
+// };
 
-const filterMatches = (paths: string[]) => {
-	return paths.filter((filePath) => {
-		return (
-			ConfigManager.exclude &&
-			!ConfigManager.exclude.reduce<boolean>((result, match) => {
-				const pattern = new RegExp(match, 'gi');
-				return result || pattern.test(filePath);
-			}, false)
-		);
-	});
-};
+// const filterMatches = (paths: string[]) => {
+// 	return getMatches(paths, ConfigManager.exclude, false);
+// };
 
 /**
  * Resolves the path to file identifier.

@@ -8,17 +8,30 @@ const program = new Command();
 program
 	.option('-g, --grep <value>', 'grep pattern to pass to Mocha')
 	.option('-s, --skip-build', 'Skip building the smart contracts and just run the tests')
+	.option('-p, --path <string>', 'contract path')
+	.option('-c, --contracts [string...]', 'select contracts to compile')
 	.parse(process.argv);
 
-// const options = prog.args;
+console.log(
+	'Running tests with options:',
+	JSON.stringify(
+		{
+			grep: program.grep,
+			skipBuild: program.skipBuild,
+			path: program.path,
+			contracts: program.contracts,
+		},
+		null,
+		4
+	)
+);
 
-console.log('Running tests with grep filter:', program.grep);
-console.log('Running tests with skipBuild:', program.skipBuild);
 /**
  * Executes a build and test procedure
  * @note Keep alive setup is incomplete
  * @author Kevin Brown <github.com/thekevinbrown>
  * @author Mitch Pierias <github.com/MitchPierias>
+ * @author Dallas Johnson <github.com/dallasjohnson>
  */
 const run = async (options: { grep?: string | undefined } | undefined) => {
 	// Initialize the configuration
@@ -36,7 +49,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll();
+		await buildAll([program.path], program.contracts);
 	} else {
 		await sleep(500);
 	}
