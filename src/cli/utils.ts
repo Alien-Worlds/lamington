@@ -354,7 +354,11 @@ export const runTests = async (options?: { grep?: string }) => {
  * @author Mitch Pierias <github.com/MitchPierias>
  * @param path_match Optional specific contract identifiers to build
  */
-export const buildAll = async (path_match?: string[], contracts_match?: string[]) => {
+export const buildAll = async (
+	path_match?: string[],
+	contracts_match?: string[],
+	defines?: string[]
+) => {
 	// Find all contract files
 	const errors = [];
 	let contracts = await glob('!(node_modules)/**/*.cpp');
@@ -383,7 +387,7 @@ export const buildAll = async (path_match?: string[], contracts_match?: string[]
 	// Build each contract and handle errors
 	for (const contract of contracts) {
 		try {
-			await build(contract);
+			await build(contract, defines);
 		} catch (error) {
 			errors.push({
 				message: `Failed to compile contract ${contract}`,
@@ -436,11 +440,11 @@ export const pathToIdentifier = (filePath: string) => filePath.substr(0, filePat
  * @author Mitch Pierias <github.com/MitchPierias>
  * @param contractPath Local path to C++ contract file
  */
-export const build = async (contractPath: string) => {
+export const build = async (contractPath: string, defines?: string[]) => {
 	// Get the base filename from path and log status
 	// const basename = path.basename(contractPath, '.cpp'); // Never Used
 	// Compile contract at path
-	await compileContract(contractPath);
+	await compileContract(contractPath, defines);
 	// Generate Typescript definitions for contract
 	spinner.create(`Generating type definitions:` + contractPath);
 	try {
@@ -467,7 +471,7 @@ export const outputPathForContract = (contractPath: string) =>
  * @author Mitch Pierias <github.com/MitchPierias>
  * @param contractPath Full path to C++ contract file
  */
-export const compileContract = async (contractPath: string) => {
+export const compileContract = async (contractPath: string, defines?: string[]) => {
 	// Begin logs
 	spinner.create(`Compiling contract: ` + contractPath);
 
@@ -487,11 +491,15 @@ export const compileContract = async (contractPath: string) => {
 		buildFlagsPathComponents.dir + '/' + buildFlagsPathComponents.name + '.lamflags';
 	let buildFlags = '';
 
+	if (defines && defines.length > 0) {
+		buildFlags += defines.map((x) => '-D' + x).join(' ');
+	}
+
 	if (await exists(buildFlagsPath)) {
 		const data = await readFile(buildFlagsPath);
 
 		console.log('\n Adding build flags to compile command: ' + data.toString());
-		buildFlags = data.toString();
+		buildFlags += ' ' + data.toString();
 	}
 
 	// Run the compile contract script inside our docker container.
@@ -504,7 +512,7 @@ export const compileContract = async (contractPath: string) => {
 				'bin',
 				'project',
 				contractPath
-			)}" "${outputPath}" "${basename}" ${buildFlags}`
+			)}" "${outputPath}" "${basename}" "${buildFlags}"`
 		)
 		.catch((err) => {
 			spinner.fail('Failed to compile');

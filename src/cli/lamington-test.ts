@@ -10,6 +10,7 @@ program
 	.option('-s, --skip-build', 'Skip building the smart contracts and just run the tests')
 	.option('-p, --path <string>', 'contract path')
 	.option('-c, --contracts [string...]', 'select contracts to compile')
+	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
 	.parse(process.argv);
 
 console.log(
@@ -36,7 +37,6 @@ console.log(
 const run = async (options: { grep?: string | undefined } | undefined) => {
 	// Initialize the configuration
 	await ConfigManager.initWithDefaults();
-	const args = process.argv;
 
 	// Stop running instances for fresh test environment
 	if (await eosIsReady()) {
@@ -49,7 +49,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll([program.path], program.contracts);
+		await buildAll([program.path], program.contracts, program.defines);
 	} else {
 		await sleep(500);
 	}
