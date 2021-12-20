@@ -73,10 +73,11 @@ const versionFromUrl = (url: string) => {
  */
 const dockerImageName = async () => {
 	await ConfigManager.loadConfigFromDisk();
+	const skipSystemContracts = ConfigManager.skipSystemContracts ? 'skipSystemContracts' : '';
 
 	return `lamington:eos.${versionFromUrl(ConfigManager.eos)}-cdt.${versionFromUrl(
 		ConfigManager.cdt
-	)}-contracts.${ConfigManager.contracts}`;
+	)}-contracts.${ConfigManager.contracts}${skipSystemContracts}`;
 };
 
 /**
