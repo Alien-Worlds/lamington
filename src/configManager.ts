@@ -93,7 +93,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	include: ['.*'],
 	exclude: [],
 	bailOnFailure: false,
-	skipSystemContracts: true,
+	skipSystemContracts: false,
 	reporter: Mocha.reporters.Min,
 	reporterOptions: 0,
 };
