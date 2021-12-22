@@ -58,12 +58,9 @@ curl --silent --output /dev/null -X POST localhost:8888/v1/producer/schedule_pro
   -d '{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}'
 sleep 0.5s
 
-echo "=== lamington: install the old system contract after first protocol activation ==="
-until [[ $(cleos get code eosio) == $old_system_hash ]]
-do
-  cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
-  sleep 0.5s
-done
+echo "=== lamington: install boot contract after first protocol activation ==="
+cleos set contract eosio "$contracts_dir/eosio.boot/" -p eosio@active
+sleep 0.5s
 
 echo "=== lamington: activate the needed features"
 
