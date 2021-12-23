@@ -31,7 +31,7 @@ done
 syskey_pub=EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 syskey_priv=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 contracts_dir=/usr/opt/eosio.contracts/build/contracts
-
+boot_contract_dir="/usr/opt/eosio/$(ls /usr/opt/eosio | head -n 1)/etc/eosio/contracts"
 old_system_hash="code hash: ae4dc08870aba3623da3dcba102ccdfad7198a4d2a6b4d9fd32681158e6cc5ca"
 
 echo "=== lamington: setup wallet: lamington ==="
@@ -59,7 +59,11 @@ curl --silent --output /dev/null -X POST localhost:8888/v1/producer/schedule_pro
 sleep 0.5s
 
 echo "=== lamington: install boot contract after first protocol activation ==="
-cleos set contract eosio "$contracts_dir/eosio.boot/" -p eosio@active
+cd $boot_contract_dir
+mkdir eosio.boot
+mv eosio.boot.abi eosio.boot
+mv eosio.boot.wasm eosio.boot
+cleos set contract eosio "$boot_contract_dir/eosio.boot/" -p eosio@active
 sleep 0.5s
 
 echo "=== lamington: activate the needed features"
