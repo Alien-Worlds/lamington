@@ -49,8 +49,8 @@
 	"loggers": [
 		{
 			"name": "default",
-			"level": "all",
-			"enabled": false,
+			"level": "debug",
+			"enabled": true,
 			"additivity": false,
 			"appenders": ["stdout"]
 		},
@@ -77,8 +77,8 @@
 		},
 		{
 			"name": "transaction_tracing",
-			"level": "all",
-			"enabled": true,
+			"level": "off",
+			"enabled": false,
 			"additivity": false,
 			"appenders": ["stdout"]
 		}
