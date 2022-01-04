@@ -136,7 +136,7 @@ export const buildImage = async () => {
 	);
 	// Execute docker build process
 	await docker.command(
-		`build -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`,
+		`build --platform linux/amd64 -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`,
 		(err, data) => {
 			console.log('error: ' + err);
 			console.log('data: ' + data);
