@@ -139,6 +139,44 @@ export class Contract implements EOSJSContract {
 				);
 			};
 		}
+
+		for (const action of actions.values()) {
+			(this as any)[`${action.name}_object_params`] = function () {
+				const data: { [key: string]: any } = arguments[0];
+
+				// Who are we acting as?
+				// We default to sending transactions from the contract account.
+				let authorization: Array<ActorPermission> = account.active;
+				const options = arguments[arguments[1]];
+
+				if (options) {
+					if (options.from && options.from instanceof Account) {
+						authorization = options.from.active;
+
+						// Ensure we have the key to sign with.
+						EOSManager.addSigningAccountIfMissing(options.from);
+					} else if (options.auths && options.auths instanceof Array) {
+						authorization = options.auths;
+					}
+				}
+
+				return EOSManager.transact(
+					{
+						actions: [
+							{
+								account: account.name,
+								name: action.name,
+								authorization: authorization,
+								data,
+							},
+						],
+					},
+					eos,
+					{ debug: options && options.debug }
+				);
+			};
+		}
+
 		// And now the tables.
 		for (const table of abi.tables) {
 			(this as any)[camelCase(table.name) + 'Table'] = function () {

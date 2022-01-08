@@ -55,8 +55,8 @@ export const mapParameterType = ({
 	function extractPair(type: string): string {
 		const isPair = type.startsWith('pair_');
 		const isArray = type.endsWith('[]');
-		const isOptional = type.endsWith('?');
-		const parameterType = isArray ? type.slice(0, -2) : type.replace('?', '');
+		const isOptional = type.endsWith('?') || type.endsWith('$');
+		const parameterType = isArray ? type.slice(0, -2) : type.replace(/\?|\$/, '');
 		let resultType: string;
 
 		// console.log('type::: ' + parameterType);
@@ -246,7 +246,7 @@ export const generateTypesFromString = async (
 		// Optional parameter at the end on every contract method.
 		parametersObj.push('options?: { from?: Account, auths?: ActorPermission[] }');
 
-		return `${action.name}O(${parametersObj.join(', ')}): Promise<any>;`;
+		return `${action.name}_object_params(${parametersObj.join(', ')}): Promise<any>;`;
 	});
 	// Generate tables
 	const generatedTables = contractTables.map(

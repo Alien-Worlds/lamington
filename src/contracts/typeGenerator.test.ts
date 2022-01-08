@@ -144,7 +144,7 @@ describe('type generator', function () {
 						addedTypes: {},
 						variants: {},
 					}),
-					'{ key: uint8; value: string }'
+					'{ first: uint8; second: string }'
 				);
 			});
 
@@ -157,7 +157,7 @@ describe('type generator', function () {
 						addedTypes: {},
 						variants: {},
 					}),
-					'Array<{ key: uint8; value: string }>'
+					'Array<{ first: uint8; second: string }>'
 				);
 			});
 		});
@@ -259,6 +259,10 @@ describe('type generator', function () {
 							{
 								"name": "type",
 								"type": "uint8"
+							},
+							{
+								"name": "proposal_hash",
+								"type": "checksum256$"
 							}
 						]
 					},
@@ -337,7 +341,7 @@ describe('type generator', function () {
 			});
 
 			it('should have the correct number of elements', async () => {
-				assert.equal(result.length, 69);
+				assert.equal(result.length, 70);
 			});
 			it('should add file header constants', async () => {
 				assert.equal(result[1], '// WARNING: GENERATED FILE');
@@ -356,49 +360,49 @@ describe('type generator', function () {
 			});
 
 			it('should add AddedTypes type defs', async () => {
-				assert.equal(result[49], '// Added Types');
-				assert.equal(result[50], 'export type TestContractNameINT16VEC = Array<number>;');
-				assert.equal(result[51], '');
+				assert.equal(result[50], '// Added Types');
+				assert.equal(result[51], 'export type TestContractNameINT16VEC = Array<number>;');
+				assert.equal(result[52], '');
 			});
 
 			it('should add Variants type defs', async () => {
-				assert.equal(result[52], '// Variants');
+				assert.equal(result[53], '// Variants');
 				assert.equal(
-					result[53],
+					result[54],
 					'export type TestContractNameVariantInt8Int16Int32Int64String = [string, number | string | boolean | TestContractNameINT16VEC];'
 				);
 				// assert.equal(result[54], '');
 			});
 
 			it('should add Action type defs', async () => {
-				assert.equal(result[56], 'export interface TestContractName extends Contract {');
+				assert.equal(result[57], 'export interface TestContractName extends Contract {');
 				assert.equal(
-					result[58],
-					'\tregaccount(dac_id: string|number, account: string|number, type: number, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					result[59],
+					'\tregaccount(dac_id: string|number, account: string|number, type: number, proposal_hash: string|null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 			it('should add Action methods type defs', async () => {
-				assert.equal(result[57], '\t// Actions');
+				assert.equal(result[58], '\t// Actions');
 				assert.equal(
-					result[58],
-					'\tregaccount(dac_id: string|number, account: string|number, type: number, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					result[59],
+					'\tregaccount(dac_id: string|number, account: string|number, type: number, proposal_hash: string|null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 
 			it('should add Action methods Object param type defs', async () => {
 				assert.equal(
-					result[60],
+					result[61],
 					'\t// Actions with object params. (This is WIP and not ready for use)'
 				);
 				assert.equal(
-					result[61],
-					'\tregaccountO(params: {dac_id: string|number, account: string|number, type: number}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					result[62],
+					'\tregaccount_object_params(params: {dac_id: string|number, account: string|number, type: number, proposal_hash: string|null}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 			it('should add Table defs', async () => {
-				assert.equal(result[64], '\t// Tables');
+				assert.equal(result[65], '\t// Tables');
 				assert.equal(
-					result[65],
+					result[66],
 					'\tdacsTable(options?: GetTableRowsOptions): Promise<TableRowsResult<TestContractNameDac>>;'
 				);
 			});
