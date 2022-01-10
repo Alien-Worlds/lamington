@@ -2,6 +2,7 @@ export interface TableRowsResult<T> {
 	rows: Array<T>;
 	more: boolean;
 	next_key: string;
+	next_key_bytes?: string;
 }
 
 export enum TransactionStatus {
