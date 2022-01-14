@@ -113,7 +113,13 @@ export class Contract implements EOSJSContract {
 				const options = arguments[action.fields.length];
 
 				if (options) {
-					if (options.from && options.from instanceof Account) {
+					if (options.from) {
+						if (!(options.from instanceof Account)) {
+							throw new Error(
+								`Contract initializer: from should be of type Account, is ${typeof options.from} `
+							);
+						}
+
 						authorization = options.from.active;
 
 						// Ensure we have the key to sign with.
