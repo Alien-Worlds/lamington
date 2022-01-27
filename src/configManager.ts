@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as path from 'path';
-import * as mkdirpCallback from 'mkdirp';
+import * as mkdirp from 'mkdirp';
 import * as Mocha from 'mocha';
 import {
 	readFile as readFileCallback,
@@ -10,7 +10,6 @@ import {
 import { promisify } from 'util';
 
 const exists = promisify(existsCallback);
-const mkdirp = promisify(mkdirpCallback);
 const writeFile = promisify(writeFileCallback);
 const readFile = promisify(readFileCallback);
 

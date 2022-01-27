@@ -1,6 +1,6 @@
 import * as colors from 'colors';
 import * as path from 'path';
-import * as mkdirpCallback from 'mkdirp';
+import * as mkdir from 'mkdirp';
 import {
 	readFile as readFileCallback,
 	writeFile as writeFileCallback,
@@ -16,7 +16,6 @@ import { GitIgnoreManager } from '../gitignoreManager';
 import { url } from 'inspector';
 
 const exists = promisify(existsCallback);
-const mkdirp = promisify(mkdirpCallback);
 const writeFile = promisify(writeFileCallback);
 const readFile = promisify(readFileCallback);
 const readdir = promisify(readdirCallback);

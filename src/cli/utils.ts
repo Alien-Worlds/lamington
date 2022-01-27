@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import * as Mocha from 'mocha';
-import * as mkdirpCallback from 'mkdirp';
+import * as mkdirp from 'mkdirp';
 import * as rimrafCallback from 'rimraf';
 import * as qrcode from 'qrcode-terminal';
 import {
@@ -14,7 +14,6 @@ import { promisify } from 'util';
 
 const exists = promisify(existsCallback);
 const glob = promisify(globCallback);
-// const mkdirp = promisify(mkdirpCallback);
 const rimraf = promisify(rimrafCallback);
 const writeFile = promisify(writeFileCallback);
 const readFile = promisify(readFileCallback);
@@ -106,7 +105,7 @@ export const buildImage = async () => {
 	// Clear the docker directory if it exists.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
 	console.log('deleting temp directory.');
-	await mkdirpCallback(TEMP_DOCKER_DIRECTORY, {});
+	await mkdirp(TEMP_DOCKER_DIRECTORY, {});
 	console.log('\n\n\n creating temp directory.');
 
 	// Write a Dockerfile so Docker knows what to build.
