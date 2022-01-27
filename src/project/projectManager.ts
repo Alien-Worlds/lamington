@@ -1,6 +1,6 @@
 import * as colors from 'colors';
 import * as path from 'path';
-import * as mkdir from 'mkdirp';
+import * as mkdirp from 'mkdirp';
 import {
 	readFile as readFileCallback,
 	writeFile as writeFileCallback,
