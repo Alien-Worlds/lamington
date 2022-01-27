@@ -166,7 +166,7 @@ const assertExpectedEOSError = async (
 			// Compare error and fail if the error doesn't match the expected
 			assert(
 				error.json.error.name === eosErrorName,
-				`Expected ${eosErrorName}, got ${error.json.error.name} instead.`
+				`Expected ${eosErrorName}, got ${JSON.stringify(error, null, 4)} instead.`
 			);
 			if (furtherErrorCheck) {
 				furtherErrorCheck(error);
@@ -225,7 +225,7 @@ export const assertEOSErrorIncludesMessage = async (
 			}
 			assert(
 				errorMessage.includes(message),
-				`Expected to include \"${message}\", got \"${errorMessage}\" instead.`
+				`Expected to include \"${message}\", got \"${JSON.stringify(error, null, 4)}\" instead.`
 			);
 		}))
 	) {

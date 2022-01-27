@@ -185,9 +185,12 @@ export class AccountManager {
 		}
 
 		// Execute the transaction
-		return await EOSManager.transact({ actions }, eos, {
-			logMessage: logMessage,
-		});
+		return await EOSManager.transact(
+			{ actions },
+			{
+				logMessage: logMessage,
+			}
+		);
 	};
 
 	/**

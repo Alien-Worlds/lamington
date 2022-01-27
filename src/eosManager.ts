@@ -96,7 +96,6 @@ export class EOSManager {
 	 */
 	static transact = async (
 		transaction: any,
-		eos = EOSManager.api,
 		options?: {
 			debug?: boolean;
 			debugLevel?: LamingtonDebugLevel;
@@ -124,7 +123,7 @@ export class EOSManager {
 			}
 		}
 
-		return await eos
+		return await EOSManager.api
 			.transact(transaction, flattenedOptions)
 			.then((value) => {
 				logOutput(chalk.green('Succeeded: ') + JSON.stringify(value, null, 4));

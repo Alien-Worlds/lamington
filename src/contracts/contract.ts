@@ -140,7 +140,6 @@ export class Contract implements EOSJSContract {
 							},
 						],
 					},
-					eos,
 					{ debug: options && options.debug }
 				);
 			};
@@ -177,7 +176,6 @@ export class Contract implements EOSJSContract {
 							},
 						],
 					},
-					eos,
 					{ debug: options && options.debug }
 				);
 			};
