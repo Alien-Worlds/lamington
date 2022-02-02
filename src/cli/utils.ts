@@ -182,7 +182,7 @@ export const stopContainer = async () => {
 	spinner.create('Stopping EOS Docker Container');
 
 	try {
-		await docker.command('stop lamington');
+		await docker.command('kill lamington');
 		spinner.end('Stopped EOS Docker Container');
 	} catch (err) {
 		spinner.fail(err);
