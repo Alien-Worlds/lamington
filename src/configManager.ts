@@ -338,7 +338,6 @@ export class ConfigManager {
 	}
 
 	static get cppFlags() {
-		console.log(`cppFlags called ConfigManager.config.cppFlags: ${ConfigManager.config.cppFlags}`);
 		return (ConfigManager.config && ConfigManager.config.cppFlags) || DEFAULT_CONFIG.cppFlags;
 	}
 }
