@@ -35,6 +35,7 @@ export interface LamingtonConfig {
 	reporterOptions?: any;
 	bailOnFailure: boolean;
 	skipSystemContracts: boolean;
+	cppFlags: string;
 }
 
 export interface DefaultLamingtonConfig {
@@ -51,6 +52,7 @@ export interface DefaultLamingtonConfig {
 	reporterOptions: any;
 	bailOnFailure: boolean;
 	skipSystemContracts: boolean;
+	cppFlags: string;
 }
 
 /**
@@ -95,6 +97,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	skipSystemContracts: false,
 	reporter: Mocha.reporters.Min,
 	reporterOptions: 0,
+	cppFlags: '',
 };
 
 /**
@@ -332,5 +335,10 @@ export class ConfigManager {
 			(ConfigManager.config && ConfigManager.config.skipSystemContracts) ||
 			DEFAULT_CONFIG.skipSystemContracts
 		);
+	}
+
+	static get cppFlags() {
+		console.log(`cppFlags called ConfigManager.config.cppFlags: ${ConfigManager.config.cppFlags}`);
+		return (ConfigManager.config && ConfigManager.config.cppFlags) || DEFAULT_CONFIG.cppFlags;
 	}
 }

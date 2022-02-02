@@ -492,6 +492,10 @@ export const compileContract = async (contractPath: string, defines?: string[]) 
 		buildFlagsPathComponents.dir + '/' + buildFlagsPathComponents.name + '.lamflags';
 	let buildFlags = '';
 
+	if (ConfigManager.cppFlags) {
+		buildFlags += ConfigManager.cppFlags + ' ';
+	}
+
 	if (defines && defines.length > 0) {
 		buildFlags += defines.map((x) => '-D' + x).join(' ');
 	}
