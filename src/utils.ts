@@ -142,6 +142,33 @@ export const assertRowCount = async (
 };
 
 /**
+ * Finds the right balance in table rows and asserts it's equal to quantity given
+ * @author Angelo Laub <github.com/angelol>
+ * @param getTableRowsResult Get table rows result promise
+ * @param quantity Expected quantity (e.g. "123.4567 EOS")
+ */
+export const assertBalanceEqual = async (
+	getTableRowsResult: Promise<TableRowsResult<any>>,
+	quantity: string
+) => {
+	const [expected_amount, expected_symbol] = quantity.split(' ');
+	const rows = (await getTableRowsResult).rows;
+	let found_symbol = false;
+	for (const row of rows) {
+		const bal = row.balance;
+		if (!bal) {
+			continue;
+		}
+		const [amount, symbol] = bal.split(' ');
+		if (symbol == expected_symbol) {
+			chai.expect(amount).to.equal(expected_amount);
+			found_symbol = true;
+		}
+	}
+	assert.ok(found_symbol, `No balance found for symbol ${expected_symbol}`);
+};
+
+/**
  * Asserts EOS throws an error and validates the error output name matches the expected `eosErrorName`
  * Also asserts that other aspects of the error as checked through an optional passed in function.
  * @author Dallas Johnson <github.com/dallasjohnson>
