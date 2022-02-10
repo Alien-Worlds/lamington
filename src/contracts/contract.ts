@@ -68,6 +68,10 @@ export class Contract implements EOSJSContract {
 		return this._account;
 	}
 
+	public get name() {
+		return this._account.name;
+	}
+
 	/**
 	 * Gets the current contract identifier
 	 * @author Kevin Brown <github.com/thekevinbrown>
@@ -85,6 +89,7 @@ export class Contract implements EOSJSContract {
 		this._abi = abi;
 		this.actions = actions;
 		this.types = types;
+
 		// Set up all the actions as methods on the contract.
 		for (const action of actions.values()) {
 			(this as any)[action.name] = function () {
