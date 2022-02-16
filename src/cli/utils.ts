@@ -151,6 +151,15 @@ export const buildImage = async () => {
  * @author Kevin Brown <github.com/thekevinbrown>
  */
 export const startContainer = async () => {
+	try {
+		await docker.command(`network create -d bridge lamington`);
+	} catch (e) {
+		if (e.stderr != 'Error response from daemon: network with name lamington already exists\n') {
+			throw e;
+		}
+		// console.log(`error: ${JSON.stringify(e.stderr, null, 2)}`);
+	}
+
 	await docker.command(
 		`run
 				--rm
@@ -158,6 +167,7 @@ export const startContainer = async () => {
 				-d
 				-p 8888:8888
 				-p 9876:9876
+				--network=lamington
 				--platform linux/amd64
 				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
 				--mount type=bind,src="${__dirname}/../scripts",dst=/opt/eosio/bin/scripts
