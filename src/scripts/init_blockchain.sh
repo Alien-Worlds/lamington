@@ -31,8 +31,7 @@ done
 syskey_pub=EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 syskey_priv=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 contracts_dir=/usr/opt/eosio.contracts/build/contracts
-boot_contract_dir="/usr/opt/eosio/$(ls /usr/opt/eosio | head -n 1)/etc/eosio/contracts"
-old_system_hash="code hash: ae4dc08870aba3623da3dcba102ccdfad7198a4d2a6b4d9fd32681158e6cc5ca"
+boot_contract_dir=$contracts_dir
 
 echo "=== lamington: setup wallet: lamington ==="
 # First key import is for eosio system account
@@ -60,9 +59,6 @@ sleep 0.5s
 
 echo "=== lamington: install boot contract after first protocol activation ==="
 cd $boot_contract_dir
-mkdir eosio.boot
-mv eosio.boot.abi eosio.boot
-mv eosio.boot.wasm eosio.boot
 cleos set contract eosio "$boot_contract_dir/eosio.boot/" -p eosio@active
 sleep 0.5s
 
@@ -106,12 +102,14 @@ cleos push action eosio activate '["299dcb6af692324b899b39f16d5a530a33062804e41f
 
 sleep 0.5s
 
-echo "=== lamington: install the new system contract after the other protocol feature activations ==="
-until [[ $(cleos get code eosio) != $old_system_hash ]]
-do
-  cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
-  sleep 0.5s
-done
+old_system_hash=$(cleos get code eosio)
+
+echo "=== lamington: not installing the new system contract after the other protocol feature activations ==="
+# until [[ $(cleos get code eosio) != $old_system_hash ]]
+# do
+#   cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
+#   sleep 0.5s
+# done
 
 echo "=== lamington: init system contract ==="
 cleos push action eosio init '[0, "4,EOS"]' -p eosio@active
