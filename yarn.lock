@@ -709,13 +709,13 @@ deep-eql@^3.0.1:
   dependencies:
     type-detect "^4.0.0"
 
-deep-equal-in-any-order@1.0.28:
-  version "1.0.28"
-  resolved "https://registry.yarnpkg.com/deep-equal-in-any-order/-/deep-equal-in-any-order-1.0.28.tgz#2b002827e03b9e6b048692baf7faa0a07d3dd1d8"
-  integrity sha512-qq3jffpGmAG9kGpZGKusjRwoGxmFgIqNW076HQmV9rNdrFsgTcpuCyp6dBhzdVCWgQDkgRmvZLYAilV4u2BsfQ==
+deep-equal-in-any-order@^1.1.18:
+  version "1.1.18"
+  resolved "https://registry.yarnpkg.com/deep-equal-in-any-order/-/deep-equal-in-any-order-1.1.18.tgz#94ed8b8622c4d502bb268be68e7dd4e91f9df6b0"
+  integrity sha512-h3RZQY67ZipOuromO4grE9OkK8jIH8G8+zO3s0VaCxj/X6b99QcCMMUg8ve/s/ToMDaeEW6syE8vLFo6a16uiw==
   dependencies:
     lodash.mapvalues "^4.6.0"
-    sort-any "^1.1.21"
+    sort-any "^2.0.0"
 
 defaults@^1.0.3:
   version "1.0.3"
@@ -2048,10 +2048,10 @@ signal-exit@^3.0.2:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.7.tgz#a9a1767f8af84155114eaabd73f99273c8f59ad9"
   integrity sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==
 
-sort-any@^1.1.21:
-  version "1.2.9"
-  resolved "https://registry.yarnpkg.com/sort-any/-/sort-any-1.2.9.tgz#82b2513a68ad8aae6f2763fbc6212868b1aad0ca"
-  integrity sha512-6LEFNVLeWrbCpFxhS+KdZypqY4XrtOA1dY1vQSacR91SJ/sXKUrR1wK7AUgLOXlLVXnaws3NcZ8lZPMdfkhlHw==
+sort-any@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/sort-any/-/sort-any-2.0.0.tgz#62a5409c9905c9483f03e41e17f46cc451aa7c55"
+  integrity sha512-T9JoiDewQEmWcnmPn/s9h/PH9t3d/LSWi0RgVmXSuDYeZXTZOZ1/wrK2PHaptuR1VXe3clLLt0pD6sgVOwjNEA==
   dependencies:
     lodash "^4.17.21"
 
