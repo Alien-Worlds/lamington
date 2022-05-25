@@ -81,7 +81,7 @@ export class EOSManager {
 			const nonLegacyPublicKey = convertLegacyPublicKey(account.publicKey);
 
 			if (!EOSManager.signatureProvider.keys.get(nonLegacyPublicKey)) {
-				EOSManager.signatureProvider.keys.set(nonLegacyPublicKey, account.privateKey);
+				// EOSManager.signatureProvider.keys.set(nonLegacyPublicKey, account.privateKey);
 				EOSManager.signatureProvider.availableKeys.push(nonLegacyPublicKey);
 			}
 		}
