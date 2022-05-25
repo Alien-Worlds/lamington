@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import { TextEncoder, TextDecoder } from 'util';
 import { Api, JsonRpc } from 'eosjs';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
+import { PrivateKey } from 'eosjs/dist/eosjs-key-conversions';
 import { Account } from './accounts';
 import { ConfigManager, LamingtonDebugLevel } from './configManager';
 import { convertLegacyPublicKey } from 'eosjs/dist/eosjs-numeric';
@@ -81,8 +82,11 @@ export class EOSManager {
 			const nonLegacyPublicKey = convertLegacyPublicKey(account.publicKey);
 
 			if (!EOSManager.signatureProvider.keys.get(nonLegacyPublicKey)) {
-				// EOSManager.signatureProvider.keys.set(nonLegacyPublicKey, account.privateKey);
-				EOSManager.signatureProvider.availableKeys.push(nonLegacyPublicKey);
+				const priv = PrivateKey.fromString(account.privateKey);
+				const privElliptic = priv.toElliptic();
+				const pubStr = priv.getPublicKey().toString();
+				EOSManager.signatureProvider.keys.set(pubStr, privElliptic);
+				EOSManager.signatureProvider.availableKeys.push(pubStr);
 			}
 		}
 	};
