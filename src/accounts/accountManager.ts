@@ -203,9 +203,12 @@ export class AccountManager {
 	public static addCodePermission = async (account: Account) => {
 		// We need to get their existing permissions, then add in a new eosio.code permission for this contract.
 		const { permissions } = await EOSManager.rpc.get_account(account.name);
-		const { required_auth } = permissions.find(
-			(permission: any) => permission.perm_name == 'active'
-		);
+		const our_perms = permissions.find((permission: any) => permission.perm_name == 'active');
+		if (!our_perms) {
+			throw new Error(`No permissions found ${account.name} `);
+			return;
+		}
+		const { required_auth } = our_perms;
 		// Check if `eosio.code` has already been set
 		const existingPermission = required_auth.accounts.find(
 			(account: any) =>
