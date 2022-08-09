@@ -3,9 +3,11 @@ import { readFile as readFileCallback, exists as existsCallback } from 'fs';
 import { promisify } from 'util';
 import { Serialize } from 'eosjs';
 import * as ecc from 'eosjs-ecc';
+import * as globCallback from 'glob';
 
 const exists = promisify(existsCallback);
 const readFile = promisify(readFileCallback);
+const glob = promisify(globCallback);
 
 import { Contract } from './contract';
 import { Account, AccountManager } from '../accounts';
@@ -42,28 +44,26 @@ export class ContractDeployer {
 			textEncoder: EOSManager.api.textEncoder,
 			textDecoder: EOSManager.api.textDecoder,
 		});
-		// Construct resource paths
-		const abiPath = path.join(
-			ConfigManager.outDir,
-			'compiled_contracts',
-			`${contractIdentifier}.abi`
-		);
 
-		if (!(await exists(abiPath))) {
+		const abiPaths = await glob('!(node_modules)/**/*.abi');
+		const abiPath = abiPaths.find((x) => {
+			return path.basename(x) == `${contractIdentifier}.abi`;
+		});
+
+		if (!abiPath) {
 			throw new Error(
-				`Couldn't find ABI at ${abiPath}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
 			);
 		}
 
-		const wasmPath = path.join(
-			ConfigManager.outDir,
-			'compiled_contracts',
-			`${contractIdentifier}.wasm`
-		);
+		const wasmPaths = await glob('!(node_modules)/**/*.wasm');
+		const wasmPath = wasmPaths.find((x) => {
+			return path.basename(x) == `${contractIdentifier}.wasm`;
+		});
 
-		if (!(await exists(wasmPath))) {
+		if (!wasmPath) {
 			throw new Error(
-				`Couldn't find WASM file at ${wasmPath}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
 			);
 		}
 
