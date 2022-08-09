@@ -20,6 +20,18 @@ const digitMapping: { [key: string]: string } = {
  */
 export const accountNameFromPublicKey = (publicKey: string) => hashToEOSName(ecc.sha256(publicKey));
 
+export function randomAccountName() {
+	function choices(population: String, k: Number) {
+		var out = [];
+		for (var i = 0; i < k; i++) {
+			out.push(population[Math.floor(population.length * Math.random())]);
+		}
+		return out.join('');
+	}
+	let alphabet = 'abcdefghijklmnopqrstuvwxyz12345';
+	return choices(alphabet, 12);
+}
+
 /**
  * Generates an account name from a hashed public key
  * @author Kevin Brown <github.com/thekevinbrown>

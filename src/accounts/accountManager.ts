@@ -3,7 +3,8 @@ import { convertLegacyPublicKey } from 'eosjs/dist/eosjs-numeric';
 import * as ecc from 'eosjs-ecc';
 
 import { Account } from './account';
-import { accountNameFromPublicKey } from './utils';
+import { randomAccountName } from './utils';
+
 import { EOSManager } from '../eosManager';
 import { ConfigManager, LamingtonDebugLevel } from '../configManager';
 import * as chalk from 'chalk';
@@ -46,11 +47,10 @@ export class AccountManager {
 		if (typeof accountNamesOrNumberOfAccounts == 'number') {
 			// Repeat account creation for specified
 			for (let i = 0; i < accountNamesOrNumberOfAccounts; i++) {
-				const resolvedPrivateKey = options?.privateKey ?? (await ecc.unsafeRandomKey());
+				const resolvedPrivateKey = options?.privateKey ?? EOSManager.adminAccount.privateKey!;
+				const publicKey = await ecc.privateToPublic(resolvedPrivateKey);
+				const accountName = randomAccountName();
 
-				const seedKey = await ecc.unsafeRandomKey();
-				const publicKey = await ecc.privateToPublic(seedKey);
-				const accountName = accountNameFromPublicKey(publicKey);
 				const account = new Account(accountName, resolvedPrivateKey);
 				// Publish the new account and store result
 				await AccountManager.setupAccount(account, options);
@@ -58,7 +58,8 @@ export class AccountManager {
 			}
 		} else {
 			for (let accountName of accountNamesOrNumberOfAccounts) {
-				const resolvedPrivateKey = options?.privateKey ?? (await ecc.unsafeRandomKey());
+				const resolvedPrivateKey = options?.privateKey ?? EOSManager.adminAccount.privateKey!;
+
 				const publicKey = await ecc.privateToPublic(resolvedPrivateKey);
 				const account = new Account(accountName, resolvedPrivateKey);
 				// Publish the new account and store result
@@ -211,14 +212,14 @@ export class AccountManager {
 		const { required_auth } = our_perms;
 		// Check if `eosio.code` has already been set
 		const existingPermission = required_auth.accounts.find(
-			(account: any) =>
-				account.permission.actor === account.name && account.permission.permission === 'eosio.code'
+			(x) => x.permission.actor === account.name && x.permission.permission === 'eosio.code'
 		);
 		// Throw if permission exists
 		if (existingPermission) {
-			throw new Error(
-				`Code permission is already present on account ${account.name} for contract ${account.name}`
+			console.log(
+				`Code permission is already present on account ${account.name} for contract ${account.name}, ignoring addCodePermission`
 			);
+			return;
 		}
 
 		// Ensure we're good to sign this transaction.

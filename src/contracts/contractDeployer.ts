@@ -152,11 +152,8 @@ export class ContractDeployer {
 		contractIdentifier: string,
 		accountName: string
 	) {
-		// Generate a random private key
-		const privateKey = await ecc.unsafeRandomKey();
-
 		// Initialize account with name
-		const account = new Account(accountName, privateKey);
+		const account = new Account(accountName, EOSManager.adminAccount.privateKey!);
 		await AccountManager.setupAccount(account);
 
 		// Call the deployToAccount method with the account
