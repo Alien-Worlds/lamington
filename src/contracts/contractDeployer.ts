@@ -45,10 +45,8 @@ export class ContractDeployer {
 			textDecoder: EOSManager.api.textDecoder,
 		});
 
-		const abiPaths = await glob('!(node_modules)/**/*.abi');
-		const abiPath = abiPaths.find((x) => {
-			return path.basename(x) == `${contractIdentifier}.abi`;
-		});
+		const abiPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.abi`);
+		const abiPath = abiPaths[0];
 
 		if (!abiPath) {
 			throw new Error(
@@ -56,10 +54,8 @@ export class ContractDeployer {
 			);
 		}
 
-		const wasmPaths = await glob('!(node_modules)/**/*.wasm');
-		const wasmPath = wasmPaths.find((x) => {
-			return path.basename(x) == `${contractIdentifier}.wasm`;
-		});
+		const wasmPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.wasm`);
+		const wasmPath = wasmPaths[0];
 
 		if (!wasmPath) {
 			throw new Error(
@@ -68,20 +64,20 @@ export class ContractDeployer {
 		}
 
 		// Read resources files for paths
-		let abi = JSON.parse(await readFile(abiPath, 'utf8'));
-		const wasm = await readFile(wasmPath);
+		let abi = JSON.parse(await readFile(abiPath!, 'utf8'));
+		const wasm = await readFile(wasmPath!);
 		// Extract ABI types
 		const abiDefinition = EOSManager.api.abiTypes.get(`abi_def`);
 		// Validate ABI definitions returned
 		if (!abiDefinition)
 			throw new Error('Could not retrieve abiDefinition from EOS API when flattening ABIs.');
 		// Ensure ABI contains all fields from `abiDefinition.fields`
-		abi = abiDefinition.fields.reduce(
+		abi = abiDefinition!.fields.reduce(
 			(acc, { name: fieldName }) => Object.assign(acc, { [fieldName]: acc[fieldName] || [] }),
 			abi
 		);
 		// Serialize ABI type definitions
-		abiDefinition.serialize(buffer, abi);
+		abiDefinition!.serialize(buffer, abi);
 
 		try {
 			// Set the contract code for the account
