@@ -96,6 +96,7 @@ export namespace UpdateAuth {
 			keyWeights: KeyWait[] = [],
 			waitWeights: WeightWait[] = []
 		): AuthorityToSet {
+			permissionLevelWeights.sort((a, b) => a.permission.actor.localeCompare(b.permission.actor));
 			return {
 				threshold: threshold,
 				accounts: permissionLevelWeights,

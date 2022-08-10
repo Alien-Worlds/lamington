@@ -3,9 +3,11 @@ import { readFile as readFileCallback, exists as existsCallback } from 'fs';
 import { promisify } from 'util';
 import { Serialize } from 'eosjs';
 import * as ecc from 'eosjs-ecc';
+import * as globCallback from 'glob';
 
 const exists = promisify(existsCallback);
 const readFile = promisify(readFileCallback);
+const glob = promisify(globCallback);
 
 import { Contract } from './contract';
 import { Account, AccountManager } from '../accounts';
@@ -42,46 +44,40 @@ export class ContractDeployer {
 			textEncoder: EOSManager.api.textEncoder,
 			textDecoder: EOSManager.api.textDecoder,
 		});
-		// Construct resource paths
-		const abiPath = path.join(
-			ConfigManager.outDir,
-			'compiled_contracts',
-			`${contractIdentifier}.abi`
-		);
 
-		if (!(await exists(abiPath))) {
+		const abiPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.abi`);
+		const abiPath = abiPaths[0];
+
+		if (!abiPath) {
 			throw new Error(
-				`Couldn't find ABI at ${abiPath}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
 			);
 		}
 
-		const wasmPath = path.join(
-			ConfigManager.outDir,
-			'compiled_contracts',
-			`${contractIdentifier}.wasm`
-		);
+		const wasmPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.wasm`);
+		const wasmPath = wasmPaths[0];
 
-		if (!(await exists(wasmPath))) {
+		if (!wasmPath) {
 			throw new Error(
-				`Couldn't find WASM file at ${wasmPath}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
 			);
 		}
 
 		// Read resources files for paths
-		let abi = JSON.parse(await readFile(abiPath, 'utf8'));
-		const wasm = await readFile(wasmPath);
+		let abi = JSON.parse(await readFile(abiPath!, 'utf8'));
+		const wasm = await readFile(wasmPath!);
 		// Extract ABI types
 		const abiDefinition = EOSManager.api.abiTypes.get(`abi_def`);
 		// Validate ABI definitions returned
 		if (!abiDefinition)
 			throw new Error('Could not retrieve abiDefinition from EOS API when flattening ABIs.');
 		// Ensure ABI contains all fields from `abiDefinition.fields`
-		abi = abiDefinition.fields.reduce(
+		abi = abiDefinition!.fields.reduce(
 			(acc, { name: fieldName }) => Object.assign(acc, { [fieldName]: acc[fieldName] || [] }),
 			abi
 		);
 		// Serialize ABI type definitions
-		abiDefinition.serialize(buffer, abi);
+		abiDefinition!.serialize(buffer, abi);
 
 		try {
 			// Set the contract code for the account
@@ -156,11 +152,8 @@ export class ContractDeployer {
 		contractIdentifier: string,
 		accountName: string
 	) {
-		// Generate a random private key
-		const privateKey = await ecc.unsafeRandomKey();
-
 		// Initialize account with name
-		const account = new Account(accountName, privateKey);
+		const account = new Account(accountName, EOSManager.adminAccount.privateKey!);
 		await AccountManager.setupAccount(account);
 
 		// Call the deployToAccount method with the account
