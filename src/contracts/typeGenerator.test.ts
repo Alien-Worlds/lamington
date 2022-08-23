@@ -335,9 +335,9 @@ describe('type generator', function () {
 				result = rawResult.split('\n');
 
 				// Uncomment below to help debug tests
-				result.forEach((v, i) => {
-					console.log(i + ' ' + JSON.stringify(v));
-				});
+				// result.forEach((v, i) => {
+				// 	console.log(i + ' ' + JSON.stringify(v));
+				// });
 			});
 
 			it('should have the correct number of elements', async () => {

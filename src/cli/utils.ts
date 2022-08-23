@@ -49,7 +49,7 @@ const TEST_EXPECTED_DURATION = 5000;
 /** @hidden Maximum test duration */
 const TEST_TIMEOUT_DURATION = 80000;
 /** @hidden Maximum number of EOS connection attempts before fail */
-const MAX_CONNECTION_ATTEMPTS = 20;
+const MAX_CONNECTION_ATTEMPTS = 40;
 
 /**
  * Extracts the version identifier from a string
