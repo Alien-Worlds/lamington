@@ -151,7 +151,6 @@ export class Contract implements EOSJSContract {
 				);
 				if (ConfigManager.benchmark) {
 					const cpu_usage_us = (res as any).processed.receipt.cpu_usage_us;
-					console.log(`${account.name}::${action.name} took %s µs`, cpu_usage_us);
 					Stats.logAction(`${account.name}::${action.name}`, cpu_usage_us);
 				}
 				return res;
