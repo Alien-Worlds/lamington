@@ -66,12 +66,29 @@ class StatsClass {
 		return times.reduce((a, b) => a + b, 0) / times.length;
 	}
 
+	public standardDeviation(action: string) {
+		if (!this.stats.has(action)) {
+			return 0;
+		}
+		const times = this.stats.get(action)!;
+		const avg = this.average(action);
+		const squareDiffs = times.map((value) => {
+			const diff = value - avg;
+			const sqrDiff = diff * diff;
+			return sqrDiff;
+		});
+		const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / squareDiffs.length;
+		const stdDev = Math.sqrt(avgSquareDiff);
+		return stdDev;
+	}
+
 	public get summary() {
 		return Array.from(this.stats.entries()).map(([action, times]) => {
 			return {
 				action,
 				median: this.median(action),
 				average: this.average(action),
+				standardDeviation: this.standardDeviation(action),
 			};
 		});
 	}
@@ -81,8 +98,10 @@ class StatsClass {
 			'\n\nStats:\n' +
 			this.summary
 				.map(
-					({ action, median, average }) =>
-						`${action.padEnd(26, ' ')} median: ${median} µs avergage: ${average} µs`
+					({ action, median, average, standardDeviation }) =>
+						`${action.padEnd(26, ' ')} median: ${median.toFixed(0)} µs avergage: ${average.toFixed(
+							0
+						)} µs stdev: ${standardDeviation.toFixed(0)} µs`
 				)
 				.join('\n')
 		);
