@@ -5,6 +5,7 @@ import { Contract as EOSJSContract, Type } from 'eosjs/dist/eosjs-serialize';
 import { EOSManager } from '../eosManager';
 import { Abi } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { camelCase } from './utils';
+import { ConfigManager, LamingtonDebugLevel } from '../configManager';
 
 export interface ContractActionParameters {
 	[key: string]: any;
@@ -92,7 +93,7 @@ export class Contract implements EOSJSContract {
 
 		// Set up all the actions as methods on the contract.
 		for (const action of actions.values()) {
-			(this as any)[action.name] = function () {
+			(this as any)[action.name] = async function () {
 				const data: { [key: string]: any } = {};
 
 				// Copy the params across for the call.
@@ -134,7 +135,7 @@ export class Contract implements EOSJSContract {
 					}
 				}
 
-				return EOSManager.transact(
+				const res = await EOSManager.transact(
 					{
 						actions: [
 							{
@@ -147,6 +148,11 @@ export class Contract implements EOSJSContract {
 					},
 					{ debug: options && options.debug }
 				);
+				if (ConfigManager.benchmark) {
+					const cpu_usage_us = (res as any).processed.receipt.cpu_usage_us;
+					console.log(`${account.name}::${action.name} took %s µs`, cpu_usage_us);
+				}
+				return res;
 			};
 		}
 
