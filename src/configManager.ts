@@ -36,6 +36,7 @@ export interface LamingtonConfig {
 	bailOnFailure: boolean;
 	skipSystemContracts: boolean;
 	cppFlags: string;
+	benchmark: boolean;
 }
 
 export interface DefaultLamingtonConfig {
@@ -53,6 +54,7 @@ export interface DefaultLamingtonConfig {
 	bailOnFailure: boolean;
 	skipSystemContracts: boolean;
 	cppFlags: string;
+	benchmark: boolean;
 }
 
 /**
@@ -98,6 +100,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	reporter: Mocha.reporters.Min,
 	reporterOptions: 0,
 	cppFlags: '',
+	benchmark: true,
 };
 
 /**
@@ -339,5 +342,9 @@ export class ConfigManager {
 
 	static get cppFlags() {
 		return (ConfigManager.config && ConfigManager.config.cppFlags) || DEFAULT_CONFIG.cppFlags;
+	}
+
+	static get benchmark() {
+		return ConfigManager.config && ConfigManager.config.benchmark;
 	}
 }
