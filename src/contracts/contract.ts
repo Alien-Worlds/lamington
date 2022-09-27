@@ -7,6 +7,7 @@ import { Abi } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { camelCase } from './utils';
 import { ConfigManager, LamingtonDebugLevel } from '../configManager';
 import { Stats } from '../stats';
+import { Asset } from './asset';
 
 export interface ContractActionParameters {
 	[key: string]: any;
@@ -111,7 +112,14 @@ export class Contract implements EOSJSContract {
 				}
 
 				for (let i = 0; i < action.fields.length; i++) {
-					data[action.fields[i].name] = arguments[i];
+					let arg = arguments[i];
+					if (arg instanceof Asset) {
+						arg = String(arg);
+					}
+					if (arg instanceof Account) {
+						arg = arg.name;
+					}
+					data[action.fields[i].name] = arg;
 				}
 
 				// Who are we acting as?
