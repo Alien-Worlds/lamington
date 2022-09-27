@@ -4,3 +4,4 @@ export * from './contractLoader';
 export * from './tableRowsResult';
 export * from './typeGenerator';
 export * from './typeMap';
+export * from './asset';
