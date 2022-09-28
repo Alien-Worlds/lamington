@@ -5,15 +5,15 @@ export class Asset {
 	readonly symbol: string;
 	readonly precision: number;
 
-	constructor(amount: any, symbol?: string, precision = 4) {
+	constructor(amount: string | number, symbol?: string, precision = 4) {
 		if (!symbol) {
-			const [amount_str, symbol_str] = amount.split(' ');
+			const [amount_str, symbol_str] = (amount as string).split(' ');
 			this.amount = parseFloat(amount_str);
 			const decimal_str = amount_str.split('.')[1];
-			this.precision = decimal_str.length;
+			this.precision = precision;
 			this.symbol = symbol_str;
 		} else {
-			this.amount = amount;
+			this.amount = amount as number;
 			this.symbol = symbol;
 			this.precision = precision;
 		}
