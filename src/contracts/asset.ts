@@ -10,7 +10,7 @@ export class Asset {
 			const [amount_str, symbol_str] = (amount as string).split(' ');
 			this.amount = parseFloat(amount_str);
 			const decimal_str = amount_str.split('.')[1];
-			this.precision = precision;
+			this.precision = decimal_str.length;
 			this.symbol = symbol_str;
 		} else {
 			this.amount = amount as number;
