@@ -19,7 +19,6 @@ export class Asset {
 		}
 
 		const x = Math.round(this.amount * 10 ** this.precision) / 10 ** this.precision;
-		assert(x == this.amount, `Precision ${this.precision} too low to represent ${amount}`);
 	}
 
 	toString() {
