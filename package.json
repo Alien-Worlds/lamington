@@ -79,7 +79,7 @@
 		"colors": "1.4.0",
 		"commander": "6.0.0",
 		"deep-equal-in-any-order": "^1.1.18",
-		"docker-cli-js": "2.9.0",
+		"docker-cli-js": "https://github.com/Alien-Worlds/docker-cli-js#add-ability-to-install-from-github",
 		"dotenv": "8.2.0",
 		"eosjs": "^22.1.0",
 		"glob": "7.1.6",
