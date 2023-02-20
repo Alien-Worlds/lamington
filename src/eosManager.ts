@@ -126,9 +126,37 @@ export class EOSManager {
 				console.log('Options: ', options);
 			}
 		}
+		const replacer = (key: any, value: any) => {
+			if (typeof value === 'bigint') {
+				return value.toString() + 'n'; // add "n" suffix to represent BigInts
+			}
+			return value;
+		};
 
-		return await EOSManager.api
-			.transact(transaction, flattenedOptions)
+		function replaceKeysAndValues(data: any): any {
+			if (typeof data === 'object' && data !== null) {
+				if (Array.isArray(data)) {
+					return data.map((item) => replaceKeysAndValues(item));
+				} else {
+					const hasKeyAndValue = 'key' in data && 'value' in data;
+					const newData: any = {};
+					for (const key in data) {
+						const newKey =
+							hasKeyAndValue && key === 'key' ? 'first' : key === 'value' ? 'second' : key;
+						const newValue = replaceKeysAndValues(data[key]);
+						newData[newKey] = newValue;
+					}
+					return newData;
+				}
+			} else {
+				return data;
+			}
+		}
+
+		const trx_changed = replaceKeysAndValues(transaction);
+		console.log('trx_changed: ', JSON.stringify(trx_changed, replacer, 2));
+		let x = await EOSManager.api
+			.transact(trx_changed, flattenedOptions)
 			.then((value) => {
 				logOutput(chalk.green('Succeeded: ') + JSON.stringify(value, null, 4));
 				return value;
@@ -143,5 +171,8 @@ export class EOSManager {
 				);
 				throw error;
 			});
+		console.log('response from transact: ', JSON.stringify(x, replacer, 2));
+
+		return x;
 	};
 }
