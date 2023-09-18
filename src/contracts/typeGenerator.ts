@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import mapTypes from './typeMap';
 import { ConfigManager } from '../configManager';
 import { pascalCase, camelCase } from './utils';
+import { log } from 'console';
 
 const glob = promisify(globWithCallbacks);
 
@@ -49,17 +50,17 @@ export const mapParameterType = ({
 		}
 		if (addedTypes[key])
 			return pascalCase(contractName) + pascalCase(addedTypes[key].new_type_name);
-		return mapTypes[key] || 'string';
+		return mapTypes[key];
 	}
 
 	function extractPair(type: string): string {
 		const isPair = type.startsWith('pair_');
 		const isArray = type.endsWith('[]');
+
 		const isOptional = type.endsWith('?') || type.endsWith('$');
 		const parameterType = isArray ? type.slice(0, -2) : type.replace(/\?|\$/, '');
 		let resultType: string;
 
-		// console.log('type::: ' + parameterType);
 		// console.log('contractStructs:::: ' + JSON.stringify(contractStructs));
 
 		if (isPair) {
@@ -81,14 +82,14 @@ export const mapParameterType = ({
 
 			// second = findType({ contractStructs, contractName, key: second });
 
-			resultType = `{ first: ${first}; second: ${second} }`;
+			resultType = `{ key: ${mapTypes[first]}; value: ${second} }`;
 		} else {
-			resultType = findType(parameterType);
+			resultType = findType(parameterType) || parameterType;
 		}
 		if (isArray) {
 			return `Array<${resultType}>`;
 		} else if (isOptional) {
-			return resultType + '|null';
+			return resultType + ' | null';
 		} else {
 			return resultType;
 		}
@@ -106,7 +107,21 @@ export const generateTypesFromString = async (
 	let contractTables = abi.tables;
 	let variants: { [key: string]: Variant } = Object.assign(
 		{},
-		...abi.variants.map((variant: Variant) => ({ [variant['name']]: variant }))
+		...abi.variants.map((variant: Variant) => {
+			let key = variant['name']; //.replace(/\[\]/g, 'VEC');
+			// if (key.length > 30) {
+			// 	key = key.slice(0, 30) + 'PlusOthers';
+			// }
+			return { [key]: variant };
+		})
+	);
+	let variants_by_name: { [key: string]: Variant } = Object.assign(
+		{},
+		...abi.variants.map((variant: Variant) => {
+			let key = variant['name'];
+
+			return { [key]: variant };
+		})
 	);
 	let addedTypes: { [key: string]: AddedType } = Object.assign(
 		{},
@@ -135,6 +150,7 @@ export const generateTypesFromString = async (
 		'ExtendedAsset',
 		'ExtendedSymbol',
 		'ActorPermission',
+		'Asset',
 	];
 	if (contractTables.length > 0) imports.push('TableRowsResult');
 	// Generate import definitions
@@ -186,23 +202,32 @@ export const generateTypesFromString = async (
 	result.push('');
 	result.push('// Variants');
 
-	// console.log('variants: ' + JSON.stringify(variants));
+	// console.log('variants: ' + JSON.stringify(variants, null, 4));
 
 	for (const key in variants) {
-		let fields = new Set();
+		// let inclusiveFields = new Array<string>();
+		let fields = new Set<string>();
 		for (const field of variants[key].types) {
-			const mappedType = mapParameterType({
-				eosType: field,
-				contractName,
-				contractStructs,
-				variants,
-				addedTypes,
-			});
-			fields.add(mappedType);
+			const mappedType =
+				mapParameterType({
+					eosType: field,
+					contractName,
+					contractStructs,
+					variants,
+					addedTypes,
+				}) || field;
+			if (mappedType.startsWith('Array')) {
+				fields.add(mappedType);
+			} else {
+				mappedType.split('|').forEach((field) => {
+					fields.add(field.trim());
+				});
+			}
 		}
+
 		const mappedFields = Array.from(fields.values());
 		const typeInterface = `export type ${pascalCase(contractName)}${pascalCase(
-			variants[key].name
+			key
 		)} = [string, ${mappedFields.join(' | ')}];`;
 		result.push(typeInterface);
 		result.push('');

@@ -8,6 +8,7 @@ program
 	.option('-p, --path <string>', 'contract path')
 	.option('-c, --contracts [string...]', 'select contracts to compile')
 	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
+	.option('-g, --generateOnly', 'Only generate TypeScript types, do not compile contracts', false)
 	.parse();
 
 console.log(
@@ -37,7 +38,7 @@ const run = async () => {
 		await startEos();
 	}
 	// Build all smart contracts
-	await buildAll([program.path], program.contracts, program.defines);
+	await buildAll(program.generateOnly, [program.path], program.contracts, program.defines);
 	// And stop it if we don't have keepAlive set.
 	if (!ConfigManager.keepAlive) {
 		await stopContainer();

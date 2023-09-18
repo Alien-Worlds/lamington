@@ -3,6 +3,7 @@ import { assert } from 'chai';
 import { ConfigManager } from '../configManager';
 import { eosIsReady, startEos, buildAll, stopContainer } from '../cli/utils';
 import { mapParameterType, generateTypesFromString } from './typeGenerator';
+import { log } from 'console';
 
 /**
  * Javascript only supports 64 bit floating point numbers natively, so CPP integer types need to be mapped accordingly
@@ -82,8 +83,8 @@ describe('type generator', function () {
 							addedTypes: {},
 							variants: {},
 						}),
-						'string|number',
-						`'${eosType}' type should map to 'string' or 'number'`
+						'string',
+						`'${eosType}' type should map to 'string'`
 					)
 				);
 			});
@@ -114,7 +115,7 @@ describe('type generator', function () {
 							addedTypes: {},
 							variants: {},
 						}),
-						'number|string',
+						'number | string | bigint',
 						`Integer type '${eosType}' should map to 'number'`
 					);
 				});
@@ -144,7 +145,7 @@ describe('type generator', function () {
 						addedTypes: {},
 						variants: {},
 					}),
-					'{ first: uint8; second: string }'
+					'{ key: number; value: string }'
 				);
 			});
 
@@ -157,7 +158,19 @@ describe('type generator', function () {
 						addedTypes: {},
 						variants: {},
 					}),
-					'Array<{ first: uint8; second: string }>'
+					'Array<{ key: number; value: string }>'
+				);
+			});
+			it(`should handle nested containers in pairs in containers`, function () {
+				assert.equal(
+					mapParameterType({
+						eosType: 'pair_uint8_string[]',
+						contractName: 'TestContract',
+						contractStructs: { pair_uint8_string: 'pair_uint8_string[]' },
+						addedTypes: {},
+						variants: {},
+					}),
+					'Array<{ key: number; value: string }>'
 				);
 			});
 		});
@@ -378,14 +391,14 @@ describe('type generator', function () {
 				assert.equal(result[57], 'export interface TestContractName extends Contract {');
 				assert.equal(
 					result[59],
-					'\tregaccount(dac_id: string|number, account: string|number, type: number, proposal_hash: string|null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash: string | null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 			it('should add Action methods type defs', async () => {
 				assert.equal(result[58], '\t// Actions');
 				assert.equal(
 					result[59],
-					'\tregaccount(dac_id: string|number, account: string|number, type: number, proposal_hash: string|null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash: string | null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 
@@ -396,7 +409,7 @@ describe('type generator', function () {
 				);
 				assert.equal(
 					result[62],
-					'\tregaccount_object_params(params: {dac_id: string|number, account: string|number, type: number, proposal_hash: string|null}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					'\tregaccount_object_params(params: {dac_id: string, account: string, type: number, proposal_hash: string | null}, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 			it('should add Table defs', async () => {
@@ -420,7 +433,7 @@ describe('type generator', function () {
 				await startEos();
 			}
 			// Build all smart contracts
-			await buildAll();
+			await buildAll(true);
 
 			// And stop it if we don't have keepAlive set.
 			if (!ConfigManager.keepAlive) {

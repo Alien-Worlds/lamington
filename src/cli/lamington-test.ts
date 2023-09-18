@@ -49,7 +49,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll([program.path], program.contracts, program.defines);
+		await buildAll(false, [program.path], program.contracts, program.defines);
 	} else {
 		await sleep(500);
 	}
