@@ -5,6 +5,7 @@
  * @param value String for case transformation
  */
 export const pascalCase = (value: string) => {
+	value = value.replace(/\[\]/g, 'Vec');
 	const snakePattern = /[_.]+./g;
 	const upperFirst = value[0].toUpperCase() + value.slice(1);
 	return upperFirst.replace(snakePattern, (match) => match[match.length - 1].toUpperCase());

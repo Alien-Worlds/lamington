@@ -363,6 +363,7 @@ export const runTests = async (options?: { grep?: string }) => {
  * @param path_match Optional specific contract identifiers to build
  */
 export const buildAll = async (
+	generateOnly: boolean,
 	path_match?: string[],
 	contracts_match?: string[],
 	defines?: string[]
@@ -395,7 +396,7 @@ export const buildAll = async (
 	// Build each contract and handle errors
 	for (const contract of contracts) {
 		try {
-			await build(contract, defines);
+			await build(contract, generateOnly, defines);
 		} catch (error) {
 			errors.push({
 				message: `Failed to compile contract ${contract}`,
@@ -448,11 +449,13 @@ export const pathToIdentifier = (filePath: string) => filePath.substr(0, filePat
  * @author Mitch Pierias <github.com/MitchPierias>
  * @param contractPath Local path to C++ contract file
  */
-export const build = async (contractPath: string, defines?: string[]) => {
+export const build = async (contractPath: string, generateOnly: boolean, defines?: string[]) => {
 	// Get the base filename from path and log status
 	// const basename = path.basename(contractPath, '.cpp'); // Never Used
 	// Compile contract at path
-	await compileContract(contractPath, defines);
+	if (!generateOnly) {
+		await compileContract(contractPath, defines);
+	}
 	// Generate Typescript definitions for contract
 	spinner.create(`Generating type definitions:` + contractPath);
 	try {
