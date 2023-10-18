@@ -139,7 +139,7 @@ export class EOSManager {
 						error +
 						'\n' +
 						chalk.cyan('Payload causing the above error: ') +
-						JSON.stringify(transaction, null, 4)
+						JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
 				);
 				throw error;
 			});
