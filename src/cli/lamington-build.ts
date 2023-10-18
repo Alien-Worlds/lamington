@@ -1,5 +1,7 @@
-import { eosIsReady, startEos, stopContainer, buildAll } from './utils';
 import { ConfigManager } from '../configManager';
+import { eosIsReady, startEos } from './cli-utils/blockchainManagement';
+import { buildAll } from './cli-utils/contactBuilding';
+import { stopContainer } from './cli-utils/dockerImageManagement';
 
 import { Command } from 'commander';
 const program = new Command();

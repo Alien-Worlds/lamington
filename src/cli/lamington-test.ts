@@ -1,4 +1,8 @@
-import { eosIsReady, startEos, runTests, stopContainer, buildAll } from './utils';
+import { eosIsReady } from './cli-utils/blockchainManagement';
+import { stopContainer } from './cli-utils/dockerImageManagement';
+import { startEos } from './cli-utils/blockchainManagement';
+import { runTests } from './cli-utils/runTests';
+import { buildAll } from './cli-utils/contactBuilding';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { ConfigManager } from '../configManager';
 import { sleep } from '../utils';

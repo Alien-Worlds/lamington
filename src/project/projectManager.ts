@@ -11,7 +11,7 @@ import { ncp as ncpCallback } from 'ncp';
 import * as rimrafCallback from 'rimraf';
 import { promisify } from 'util';
 import { ConfigManager } from './../configManager';
-import * as spinner from './../cli/logIndicator';
+import * as spinner from '../cli/cli-utils/logIndicator';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { url } from 'inspector';
 
