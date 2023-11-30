@@ -113,7 +113,10 @@ export class Contract implements EOSJSContract {
 
 				for (let i = 0; i < action.fields.length; i++) {
 					let arg = arguments[i];
-					if (arg === undefined || arg === null) {
+
+					const is_binary_extension = this.isBinaryExtension(action.name, action.fields[i].name);
+					if (is_binary_extension && (arg === undefined || arg === null)) {
+						// skip binary extensions if they are undefined or null
 						continue;
 					}
 					if (arg instanceof Asset) {
@@ -209,6 +212,18 @@ export class Contract implements EOSJSContract {
 			(this as any)[camelCase(table.name) + 'Table'] = function () {
 				return this.getTableRows(table.name, arguments[0]);
 			};
+		}
+	}
+
+	private isBinaryExtension(type_name: string, param_name: string) {
+		const x = this.types.get(type_name) || { fields: [] };
+		const f = x.fields.find((f) => f.name === param_name);
+
+		// if typeName ends with a $, it's a binary extension
+		if (!f) {
+			return false;
+		} else {
+			return f.typeName.endsWith('$');
 		}
 	}
 
