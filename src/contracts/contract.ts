@@ -113,6 +113,9 @@ export class Contract implements EOSJSContract {
 
 				for (let i = 0; i < action.fields.length; i++) {
 					let arg = arguments[i];
+					if (arg === undefined || arg === null) {
+						continue;
+					}
 					if (arg instanceof Asset) {
 						arg = String(arg);
 					}
