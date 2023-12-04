@@ -236,16 +236,17 @@ export const generateTypesFromString = async (
 	// Generate contract type from ABI
 	const generatedContractActions = contractActions.map((action: any) => {
 		// With a function for each action
-		const parameters = contractStructs[action.name].fields.map(
-			(parameter: any) =>
-				`${parameter.name}: ${mapParameterType({
-					contractName,
-					contractStructs,
-					eosType: parameter.type,
-					variants,
-					addedTypes,
-				})}`
-		);
+		const parameters = contractStructs[action.name].fields.map((parameter: any) => {
+			const isOptional = parameter.type.endsWith('$');
+			const parameterType = isOptional ? parameter.type.slice(0, -1) : parameter.type;
+			return `${parameter.name}${isOptional ? '?' : ''}: ${mapParameterType({
+				contractName,
+				contractStructs,
+				eosType: parameterType,
+				variants,
+				addedTypes,
+			})}`;
+		});
 		// Optional parameter at the end on every contract method.
 		parameters.push('options?: { from?: Account, auths?: ActorPermission[] }');
 
