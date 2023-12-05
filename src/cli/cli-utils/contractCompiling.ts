@@ -38,11 +38,13 @@ class FileModTracker {
  * @param contractPath Full path to C++ contract file
  * @returns Output path for contract compilation artefacts
  */
-export const outputPathForContract = (contractPath: string, definesPath: string | undefined) => {
+export const outputPathForContract = (contractName: string, defines: string[] | undefined) => {
 	let pathComponents = [ConfigManager.outDir, 'compiled_contracts'];
-	if (definesPath) pathComponents.push(definesPath.replace('-D', '_'));
-	pathComponents.push(path.dirname(contractPath));
-	return path.join(...pathComponents);
+	let definesPath = '';
+	if (defines) {
+		definesPath = defines.join('.');
+	}
+	return path.join(ConfigManager.outDir, 'compiled_contracts', definesPath, contractName);
 };
 
 /**
@@ -54,7 +56,8 @@ export const outputPathForContract = (contractPath: string, definesPath: string 
 
 export const compileContract = async (
 	contractPath: string,
-	defines?: string[]
+	defines?: string[],
+	force: boolean = false
 ): Promise<boolean> => {
 	// Begin logs
 	spinner.create(`Compiling contract: ` + contractPath);
@@ -90,11 +93,12 @@ export const compileContract = async (
 		buildFlags += ' ' + data.toString();
 	}
 
-	let outputPath = outputPathForContract(contractPath, definesPath);
+	const contractName = path.basename(contractPath, '.cpp');
+	let outputPath = outputPathForContract(contractName, defines);
 
 	const fileTracker = await FileModTracker.create(outputPath, contractPath);
 
-	if (!(await fileTracker.hasChanged())) {
+	if (!force && !(await fileTracker.hasChanged())) {
 		spinner.end(`Source unchanged. Skipping Compile: ` + contractPath);
 		return false;
 	}

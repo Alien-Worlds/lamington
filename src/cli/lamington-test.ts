@@ -15,6 +15,7 @@ program
 	.option('-p, --path <string>', 'contract path')
 	.option('-c, --contracts [string...]', 'select contracts to compile')
 	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
+	.option('-f, --force', 'Force-compile all contracts, even if they have not changed')
 	.parse(process.argv);
 
 console.log(
@@ -53,7 +54,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll(false, [program.path], program.contracts, program.defines);
+		await buildAll(false, [program.path], program.contracts, program.defines, program.force);
 	} else {
 		await sleep(500);
 	}

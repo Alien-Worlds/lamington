@@ -3,6 +3,7 @@ import { generateTypes } from '../../contracts';
 import { glob } from './cli-utils';
 import { compileContract } from './contractCompiling';
 import * as spinner from './logIndicator';
+import { outputPathForContract } from './contractCompiling';
 
 export const getMatches = (paths: string[], matches: string[] = [], include: boolean = true) => {
 	return paths.filter((filePath) => {
@@ -35,7 +36,8 @@ export const buildAll = async (
 	generateOnly: boolean,
 	path_match?: string[],
 	contracts_match?: string[],
-	defines?: string[]
+	defines?: string[],
+	force: boolean = false
 ) => {
 	// Find all contract files
 	const errors = [];
@@ -64,7 +66,7 @@ export const buildAll = async (
 	// Build each contract and handle errors
 	for (const contract of contracts) {
 		try {
-			await build(contract, generateOnly, defines);
+			await build(contract, generateOnly, defines, force);
 		} catch (error) {
 			errors.push({
 				message: `Failed to compile contract ${contract}`,
@@ -89,20 +91,25 @@ export const buildAll = async (
  * @param contractPath Local path to C++ contract file
  */
 
-export const build = async (contractPath: string, generateOnly: boolean, defines?: string[]) => {
+export const build = async (
+	contractPath: string,
+	generateOnly: boolean,
+	defines?: string[],
+	force: boolean = false
+) => {
 	// Get the base filename from path and log status
 	// const basename = path.basename(contractPath, '.cpp'); // Never Used
 	// Compile contract at path
 	let compileSucceeded: boolean = true;
 
 	if (!generateOnly) {
-		compileSucceeded = await compileContract(contractPath, defines);
+		compileSucceeded = await compileContract(contractPath, defines, force);
 	}
 	// Generate Typescript definitions for contract
 	if (generateOnly || compileSucceeded) {
 		spinner.create(`Generating type definitions:` + contractPath);
 		try {
-			await generateTypes(pathToIdentifier(contractPath));
+			await generateTypes(contractPath, defines);
 			spinner.end(`Generated type definitions: ` + contractPath);
 		} catch (error) {
 			spinner.fail(`Failed to generate type definitions: ` + contractPath);
