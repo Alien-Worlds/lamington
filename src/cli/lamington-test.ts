@@ -1,4 +1,8 @@
-import { eosIsReady, startEos, runTests, stopContainer, buildAll } from './utils';
+import { eosIsReady } from './cli-utils/blockchainManagement';
+import { stopContainer } from './cli-utils/dockerImageManagement';
+import { startEos } from './cli-utils/blockchainManagement';
+import { runTests } from './cli-utils/runTests';
+import { buildAll } from './cli-utils/contactBuilding';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { ConfigManager } from '../configManager';
 import { sleep } from '../utils';
@@ -11,6 +15,7 @@ program
 	.option('-p, --path <string>', 'contract path')
 	.option('-c, --contracts [string...]', 'select contracts to compile')
 	.option('-D, --defines [value...]', 'Addtional -D arguments that will be passed to eosio-cpp')
+	.option('-f, --force', 'Force-compile all contracts, even if they have not changed')
 	.parse(process.argv);
 
 console.log(
@@ -49,7 +54,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	}
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
-		await buildAll(false, [program.path], program.contracts, program.defines);
+		await buildAll(false, [program.path], program.contracts, program.defines, program.force);
 	} else {
 		await sleep(500);
 	}

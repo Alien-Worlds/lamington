@@ -6,8 +6,9 @@ import mapTypes from './typeMap';
 import { ConfigManager } from '../configManager';
 import { pascalCase, camelCase } from './utils';
 import { log } from 'console';
-
+import { outputPathForContract } from '../cli/cli-utils/contractCompiling';
 const glob = promisify(globWithCallbacks);
+import { pathToIdentifier } from '../cli/cli-utils/contactBuilding';
 
 type IndentedGeneratorLevel = { [key: string]: Array<string> | IndentedGeneratorLevel };
 type GeneratorLevel = Array<string | IndentedGeneratorLevel>;
@@ -322,19 +323,24 @@ export const generateAllTypes = async () => {
 
  * @param contractIdentifier Path to file without extension
  */
-export const generateTypes = async (contractIdentifier: string) => {
+export const generateTypes = async (contractPath: string, defines?: string[]) => {
 	// Create contract details
-	const contractName = path.basename(contractIdentifier);
-	const abiPath = path.join(
-		ConfigManager.outDir,
-		'compiled_contracts',
-		`${contractIdentifier}.abi`
-	);
+	const contractName = path.basename(contractPath, '.cpp');
+
+	const outputPath = outputPathForContract(contractName, defines);
+
+	const abiPath = path.join(outputPath, `${contractName}.abi`);
+
 	// Handle ABI file loading
 	if (!fs.existsSync(path.resolve(abiPath)))
-		throw new Error(`Missing ABI file at path '${path.resolve(abiPath)}'`);
+		throw new Error(
+			`Missing ABI file at path '${path.resolve(
+				abiPath
+			)}' abiPath: ${abiPath} contractName: ${contractName} contractPath: ${contractPath} outputPath: ${outputPath}`
+		);
 	const rawABI = fs.readFileSync(path.resolve(abiPath), 'utf8');
 
+	const contractIdentifier = pathToIdentifier(contractPath);
 	const generaterLevels = await generateTypesFromString(rawABI, contractName);
 	await saveInterface(contractIdentifier, generaterLevels);
 };

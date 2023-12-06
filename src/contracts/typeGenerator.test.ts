@@ -1,9 +1,10 @@
 import { assert } from 'chai';
 
 import { ConfigManager } from '../configManager';
-import { eosIsReady, startEos, buildAll, stopContainer } from '../cli/utils';
+import { buildAll } from '../cli/cli-utils/contactBuilding';
+import { stopContainer } from '../cli/cli-utils/dockerImageManagement';
+import { eosIsReady, startEos } from '../cli/cli-utils/blockchainManagement';
 import { mapParameterType, generateTypesFromString } from './typeGenerator';
-import { log } from 'console';
 
 /**
  * Javascript only supports 64 bit floating point numbers natively, so CPP integer types need to be mapped accordingly

@@ -1,4 +1,5 @@
-import { stopContainer, eosIsReady } from './utils';
+import { eosIsReady } from './cli-utils/blockchainManagement';
+import { stopContainer } from './cli-utils/dockerImageManagement';
 import { ConfigManager } from '../configManager';
 
 /**
