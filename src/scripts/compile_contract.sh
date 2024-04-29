@@ -14,6 +14,10 @@ mkdir -p "project/$outputPath"
 
 # compile smart contract to wasm and abi files using EOSIO.CDT (Contract Development Toolkit)
 # https://github.com/EOSIO/eosio.cdt
-eosio-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $4
-
+if command -v eosio-cpp &> /dev/null
+then
+    eosio-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $addedBuildFlags
+else
+    cdt-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $addedBuildFlags
+fi
 
