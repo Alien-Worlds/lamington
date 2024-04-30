@@ -18,6 +18,6 @@ if command -v eosio-cpp &> /dev/null
 then
     eosio-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $addedBuildFlags
 else
-    cdt-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $addedBuildFlags
+    cdt-cpp -stack-canary --std=c++2a --no-missing-ricardian-clause -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $addedBuildFlags
 fi
 

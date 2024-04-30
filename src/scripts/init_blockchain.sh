@@ -105,11 +105,11 @@ sleep 0.5s
 old_system_hash=$(cleos get code eosio)
 
 echo "=== lamington: not installing the new system contract after the other protocol feature activations ==="
-# until [[ $(cleos get code eosio) != $old_system_hash ]]
-# do
-#   cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
-#   sleep 0.5s
-# done
+until [[ $(cleos get code eosio) != $old_system_hash ]]
+do
+  cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
+  sleep 0.5s
+done
 
 echo "=== lamington: init system contract ==="
 cleos push action eosio init '[0, "4,EOS"]' -p eosio@active
@@ -119,17 +119,17 @@ cleos push action eosio setpriv '["eosio.msig",1]' -p eosio
 
 # EOSIO 2.1
 
-# echo KV_DATABASE
-# cleos push action eosio activate '["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]' -p eosio
+echo KV_DATABASE
+cleos push action eosio activate '["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]' -p eosio
 
-# echo ACTION_RETURN_VALUE
-# cleos push action eosio activate '["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]' -p eosio
+echo ACTION_RETURN_VALUE
+cleos push action eosio activate '["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]' -p eosio
 
-# echo CONFIGURABLE_WASM_LIMITS
-# cleos push action eosio activate '["bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"]' -p eosio
+echo CONFIGURABLE_WASM_LIMITS
+cleos push action eosio activate '["bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"]' -p eosio
 
-# echo BLOCKCHAIN_PARAMETERS
-# cleos push action eosio activate '["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]' -p eosio
+echo BLOCKCHAIN_PARAMETERS
+cleos push action eosio activate '["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]' -p eosio
 
 # put the background nodeos job to foreground for docker run
 fg %1
