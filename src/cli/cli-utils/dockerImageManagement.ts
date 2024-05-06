@@ -5,7 +5,7 @@ import { WORKING_DIRECTORY, rimraf, writeFile } from './cli-utils';
 import * as spinner from './logIndicator';
 
 /** @hidden Config directory for running EOSIO */
-export const CONFIG_DIRECTORY = path.join(__dirname, '../../eosio-config');
+export const CONFIG_DIRECTORY = path.join(__dirname, '../../config');
 /** @hidden Pre-Compiled EOSIO system contracts */
 export const CONTRACTS_DIRECTORY = path.join(__dirname, '../../eosio-contracts');
 /** @hidden Temporary docker resource directory */
@@ -38,7 +38,9 @@ export const versionFromUrl = (url: string) => {
  */
 
 export const buildImage = async () => {
-	console.log('build image');
+	const image_name = await dockerImageName();
+	console.log(`build image "${image_name}"`);
+
 	// Log notification
 	spinner.create('Building docker image for :' + ConfigManager.cdt + ' on: ' + ConfigManager.eos);
 	// Clear the docker directory if it exists.
@@ -49,28 +51,27 @@ export const buildImage = async () => {
 
 	// Write a Dockerfile so Docker knows what to build.
 	const systemDeps = ['build-essential', 'ca-certificates', 'cmake', 'curl', 'git', 'wget'];
+	const file_contents = `
+	FROM ubuntu:18.04
 
-	await writeFile(
-		path.join(TEMP_DOCKER_DIRECTORY, 'Dockerfile'),
-		`
-		FROM ubuntu:18.04
+	RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends ${systemDeps.join(
+		' '
+	)}
+	
+	RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
+	RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
 
-		RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends ${systemDeps.join(
-			' '
-		)}
-		
-		RUN wget ${ConfigManager.eos} && apt-get install -y ./*.deb && rm -f *.deb
-		RUN wget ${ConfigManager.cdt} && apt-get install -y ./*.deb && rm -f *.deb
-
-		RUN apt-get clean && rm -rf /tmp/* /var/tmp/* && rm -rf /var/lib/apt/lists/*
-		`.replace(/\t/gm, '')
-	);
+	RUN apt-get clean && rm -rf /tmp/* /var/tmp/* && rm -rf /var/lib/apt/lists/*
+	`.replace(/\t/gm, '');
+	console.log('writing docker file: \n' + file_contents);
+	await writeFile(path.join(TEMP_DOCKER_DIRECTORY, 'Dockerfile'), file_contents);
 	// Execute docker build process
+
 	await docker.command(
-		`build --platform linux/amd64 -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`,
+		`build --platform linux/amd64 -t ${image_name} "${TEMP_DOCKER_DIRECTORY}"`,
 		(err, data) => {
-			console.log('error: ' + err);
-			console.log('data: ' + data);
+			console.log('docker build error: ' + err);
+			console.log('docker build data: ' + data);
 		}
 	);
 	// Clean up after ourselves.
@@ -115,7 +116,7 @@ export const startContainer = async () => {
 				--platform linux/amd64
 				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
 				--mount type=bind,src="${__dirname}/../../scripts",dst=/opt/eosio/bin/scripts
-				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
+				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev
 				--mount type=bind,src="${CONTRACTS_DIRECTORY}",dst=/usr/opt/eosio.contracts/build/contracts
 				-w "/opt/eosio/bin/"
 				${await dockerImageName()}
