@@ -29,6 +29,10 @@ export class Asset {
 		return this.amount * 10 ** this.precision;
 	}
 
+	symbol_with_precision() {
+		return `${this.precision},${this.symbol}`;
+	}
+
 	assertSame(other: Asset) {
 		assert(this.symbol === other.symbol, `Differing symbol. Trying to add ${other} to ${this}`);
 		assert(
