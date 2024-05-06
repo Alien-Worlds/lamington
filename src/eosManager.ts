@@ -127,21 +127,44 @@ export class EOSManager {
 			}
 		}
 
-		return await EOSManager.api
-			.transact(transaction, flattenedOptions)
-			.then((value) => {
-				logOutput(chalk.green('Succeeded: ') + JSON.stringify(value, null, 4));
-				return value;
-			})
-			.catch((error) => {
-				logOutput(
-					chalk.red('Threw error: ') +
-						error +
-						'\n' +
-						chalk.cyan('Payload causing the above error: ') +
-						JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
-				);
-				throw error;
-			});
+		console.log(
+			JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
+		);
+
+		// const xxx = await EOSManager.api
+		// 	.transact(transaction, flattenedOptions)
+		// 	.then((value) => {
+		// 		logOutput(chalk.green('Succeeded: ') + JSON.stringify(value, null, 4));
+		// 		return value;
+		// 	})
+		// 	.catch((error) => {
+		// 		logOutput(
+		// 			chalk.red('Threw error: ') +
+		// 				error +
+		// 				'\n' +
+		// 				chalk.cyan('Payload causing the above error: ') +
+		// 				JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
+		// 		);
+		// 		throw error;
+		// 	});
+		try {
+			const xxx = await EOSManager.api.transact(transaction, flattenedOptions);
+			logOutput(chalk.green('Succeeded: ') + JSON.stringify(xxx, null, 4));
+			console.log('xxx: ', xxx);
+			return xxx;
+		} catch (error) {
+			logOutput(
+				chalk.red('Threw error: ') +
+					error +
+					'\n' +
+					chalk.cyan('Payload causing the above error: ') +
+					JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
+			);
+			console.log(
+				'ERROR! ',
+				JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
+			);
+			throw error;
+		}
 	};
 }

@@ -238,8 +238,11 @@ export const generateTypesFromString = async (
 	const generatedContractActions = contractActions.map((action: any) => {
 		// With a function for each action
 		const parameters = contractStructs[action.name].fields.map((parameter: any) => {
+			// Check if the parameter type ends with a '$', indicating it is optional
 			const isOptional = parameter.type.endsWith('$');
+			// Remove the '$' suffix if present
 			const parameterType = isOptional ? parameter.type.slice(0, -1) : parameter.type;
+			// Map the parameter type and add a TypeScript optional modifier if needed
 			return `${parameter.name}${isOptional ? '?' : ''}: ${mapParameterType({
 				contractName,
 				contractStructs,
@@ -250,8 +253,6 @@ export const generateTypesFromString = async (
 		});
 		// Optional parameter at the end on every contract method.
 		parameters.push('options?: { from?: Account, auths?: ActorPermission[] }');
-
-		// ObjectParamSignature
 
 		return `${action.name}(${parameters.join(', ')}): Promise<any>;`;
 	});
