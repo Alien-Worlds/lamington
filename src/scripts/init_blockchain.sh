@@ -16,7 +16,7 @@ rm -rf /mnt/dev/data
 # run it in a background job such that docker run could continue
 nodeos -e -p eosio -d /mnt/dev/data \
   --config-dir /mnt/dev/config \
-  --genesis-json /mnt/dev/config/genesis.json \
+  --genesis-json /mnt/dev/genesis.json \
   --disable-replay-opts &
 
 until $(curl --output /dev/null \
