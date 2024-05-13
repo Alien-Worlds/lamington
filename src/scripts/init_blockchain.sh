@@ -100,6 +100,9 @@ cleos push action eosio activate '["4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb8
 echo "Activating: WTMSIG_BLOCK_SIGNATURES"
 cleos push action eosio activate '["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]' -p eosio
 
+echo "Activating: GET_CODE_HASH"
+cleos push action eosio activate '["bcd2a26394b36614fd4894241d3c451ab0f6fd110958c3423073621a70826e99"]' -p eosio
+
 sleep 0.5s
 
 old_system_hash=$(cleos get code eosio)
