@@ -210,7 +210,6 @@ export class Contract implements EOSJSContract {
 		// And now the tables.
 		for (const table of abi.tables) {
 			(this as any)[camelCase(table.name) + 'Table'] = function () {
-				console.log('Calling table', table.name, arguments);
 				return this.getTableRows(table.name, arguments[0]);
 			};
 		}
@@ -238,9 +237,7 @@ export class Contract implements EOSJSContract {
 	 */
 	public getTableRows = async (table: string, options?: GetTableRowsOptions) => {
 		// Wait for the next block to appear before we query the values.
-		console.log('getTableRows 0');
 		await nextBlock();
-		console.log('getTableRows 1');
 		const result = await this._eos.rpc.get_table_rows({
 			code: this.account.name,
 			scope: (options && options.scope) || this.account.name,
@@ -255,7 +252,6 @@ export class Contract implements EOSJSContract {
 			table,
 			json: true,
 		});
-		console.log('getTableRows 2');
 
 		// EOSJS gives us values that don't match up with our Typescript types,
 		// for example, the ABI bool type gets returned as a number (0 or 1) instead
@@ -270,7 +266,6 @@ export class Contract implements EOSJSContract {
 		const tableRowType = this.types.get(tableAbi.type);
 		if (!tableRowType) throw new Error(`Could not find table row type for table ${table}`);
 
-		console.log('getTableRows 3');
 		// Bool is the only type we need to fiddle with at the moment, so only do this if
 		// there's a field with a bool type in it.
 		const booleanFields = tableRowType.fields.filter((field) => field.typeName === 'bool');
@@ -291,7 +286,6 @@ export class Contract implements EOSJSContract {
 				}
 			}
 		}
-		console.log('getTableRows 4');
 
 		const dateFields = tableRowType.fields.filter((field) => field.typeName === 'time_point_sec');
 
@@ -313,7 +307,6 @@ export class Contract implements EOSJSContract {
 				}
 			}
 		}
-		console.log('getTableRows 5');
 
 		return result;
 	};

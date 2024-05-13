@@ -127,10 +127,6 @@ export class EOSManager {
 			}
 		}
 
-		console.log(
-			JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
-		);
-
 		// const xxx = await EOSManager.api
 		// 	.transact(transaction, flattenedOptions)
 		// 	.then((value) => {
@@ -150,7 +146,6 @@ export class EOSManager {
 		try {
 			const xxx = await EOSManager.api.transact(transaction, flattenedOptions);
 			logOutput(chalk.green('Succeeded: ') + JSON.stringify(xxx, null, 4));
-			console.log('xxx: ', xxx);
 			return xxx;
 		} catch (error) {
 			logOutput(
@@ -160,10 +155,7 @@ export class EOSManager {
 					chalk.cyan('Payload causing the above error: ') +
 					JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
 			);
-			console.log(
-				'ERROR! ',
-				JSON.stringify(transaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 4)
-			);
+
 			throw error;
 		}
 	};
