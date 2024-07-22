@@ -119,10 +119,16 @@ export class Contract implements EOSJSContract {
 						// skip binary extensions if they are undefined or null
 						continue;
 					}
+					if (arg instanceof String || typeof arg === 'string') {
+						console.log('It;s a string', arg);
+					}
+
 					if (arg instanceof Asset) {
-						arg = String(arg);
+						console.log('Asset----', arg);
+						arg = arg.toString();
 					}
 					if (arg instanceof Account) {
+						console.log('ACCOUNT----', arg);
 						arg = arg.name;
 					}
 					data[action.fields[i].name] = arg;
@@ -305,6 +311,27 @@ export class Contract implements EOSJSContract {
 					}
 
 					row[field.name] = date;
+				}
+			}
+		}
+
+		const assetFields = tableRowType.fields.filter((field) => field.typeName === 'asset');
+
+		if (assetFields.length > 0) {
+			// Map all `asset` fields from string to Asset
+			for (const row of result.rows) {
+				for (const field of assetFields) {
+					const currentValue = row[field.name];
+
+					let asset = new Asset(currentValue);
+
+					if (asset === undefined) {
+						throw new Error(
+							`Invalid value while casting to Date for ${field.name} field on row. Got ${currentValue}, expected as ISO date string.`
+						);
+					}
+
+					row[field.name] = asset;
 				}
 			}
 		}
