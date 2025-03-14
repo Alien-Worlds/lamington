@@ -105,14 +105,53 @@ sleep 0.5s
 old_system_hash=$(cleos get code eosio)
 
 echo "=== lamington: not installing the new system contract after the other protocol feature activations ==="
-# until [[ $(cleos get code eosio) != $old_system_hash ]]
-# do
-#   cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
-#   sleep 0.5s
-# done
+until [[ $(cleos get code eosio) != $old_system_hash ]]
+do
+  cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
+  sleep 0.5s
+done
+
+sleep 1s
 
 echo "=== lamington: init system contract ==="
-cleos push action eosio init '[0, "4,EOS"]' -p eosio@active
+max_attempts=3
+attempt=1
+success=false
+
+while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
+  echo "Attempt $attempt of $max_attempts to initialize system contract..."
+  if cleos push action eosio init '[0, "4,EOS"]' -p eosio@active; then
+    echo "System contract initialized successfully."
+    success=true
+  else
+    echo "Failed to initialize system contract (attempt $attempt of $max_attempts)."
+    if [ $attempt -lt $max_attempts ]; then
+      echo "Retrying in 2 seconds..."
+      sleep 2
+    fi
+    attempt=$((attempt+1))
+  fi
+done
+
+if [ "$success" = false ]; then
+  echo "Failed to initialize system contract after $max_attempts attempts. Exiting with error."
+  exit 1
+fi
+
+echo "=== lamington: Verifying rammarket table ==="
+echo "Checking if the rammarket table has been properly initialized..."
+ram_check=$(cleos get table eosio eosio rammarket)
+
+# Check if the rammarket table has the expected data
+if echo "$ram_check" | grep -q "RAMCORE" && 
+   echo "$ram_check" | grep -q "RAM" && 
+   echo "$ram_check" | grep -q "EOS"; then
+  echo "Rammarket table successfully verified."
+else
+  echo "ERROR: Rammarket table verification failed. Table does not contain expected values."
+  echo "Received: $ram_check"
+  exit 1
+fi
 
 echo "=== lamington: Set eosio.msig to be privileged ==="
 cleos push action eosio setpriv '["eosio.msig",1]' -p eosio
