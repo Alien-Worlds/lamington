@@ -26,7 +26,7 @@ export const versionFromUrl = (url: string) => {
 	const result = pattern.exec(url);
 
 	// Handle result
-	if (!result) throw new Error(`Could not extract version number from url: '${url}'`);
+	if (!result) return 'unknown';
 	return result[1];
 };
 
