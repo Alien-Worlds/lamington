@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# set -o errexit
-# set -x
+
 
 echo "=== lamington: setup blockchain accounts and smart contract ==="
 
@@ -100,18 +99,40 @@ cleos push action eosio activate '["4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb8
 echo "Activating: WTMSIG_BLOCK_SIGNATURES"
 cleos push action eosio activate '["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]' -p eosio
 
-sleep 0.5s
+echo "Activating: GET_CODE_HASH"
+cleos push action eosio activate '["bcd2a26394b36614fd4894241d3c451ab0f6fd110958c3423073621a70826e99"]' -p eosio
+
+echo "Activating: GET_BLOCK_NUM"
+cleos push action eosio activate '["35c2186cc36f7bb4aeaf4487b36e57039ccf45a9136aa856a5d569ecca55ef2b"]' -p eosio
+
+echo "Activating: CRYPTO_PRIMITIVES"
+cleos push action eosio activate '["6bcb40a24e49c26d0a60513b6aeb8551d264e4717f306b81a37a5afb3b47cedc"]' -p eosio
+
+
+echo ACTION_RETURN_VALUE
+cleos push action eosio activate '["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]' -p eosio
+
+echo CONFIGURABLE_WASM_LIMITS2
+cleos push action eosio activate '["d528b9f6e9693f45ed277af93474fd473ce7d831dae2180cca35d907bd10cb40"]' -p eosio
+
+echo BLOCKCHAIN_PARAMETERS
+cleos push action eosio activate '["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]' -p eosio
+
+
 
 old_system_hash=$(cleos get code eosio)
 
-echo "=== lamington: not installing the new system contract after the other protocol feature activations ==="
+echo "=== lamington: installing the new system contract after the other protocol feature activations ==="
 until [[ $(cleos get code eosio) != $old_system_hash ]]
 do
+  echo "Attempting to install the new system contract..."
   cleos set contract eosio "$contracts_dir/eosio.system" -p eosio@active
   sleep 0.5s
 done
 
-sleep 1s
+echo "=== lamington: system contract successfully installed ==="
+
+sleep 5s
 
 echo "=== lamington: init system contract ==="
 max_attempts=3
@@ -156,19 +177,7 @@ fi
 echo "=== lamington: Set eosio.msig to be privileged ==="
 cleos push action eosio setpriv '["eosio.msig",1]' -p eosio
 
-# EOSIO 2.1
 
-# echo KV_DATABASE
-# cleos push action eosio activate '["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]' -p eosio
-
-# echo ACTION_RETURN_VALUE
-# cleos push action eosio activate '["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]' -p eosio
-
-# echo CONFIGURABLE_WASM_LIMITS
-# cleos push action eosio activate '["bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"]' -p eosio
-
-# echo BLOCKCHAIN_PARAMETERS
-# cleos push action eosio activate '["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]' -p eosio
 
 # put the background nodeos job to foreground for docker run
 fg %1
