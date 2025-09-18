@@ -392,14 +392,14 @@ describe('type generator', function () {
 				assert.equal(result[57], 'export interface TestContractName extends Contract {');
 				assert.equal(
 					result[59],
-					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash: string | null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash?: string, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 			it('should add Action methods type defs', async () => {
 				assert.equal(result[58], '\t// Actions');
 				assert.equal(
 					result[59],
-					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash: string | null, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
+					'\tregaccount(dac_id: string, account: string, type: number, proposal_hash?: string, options?: { from?: Account, auths?: ActorPermission[] }): Promise<any>;'
 				);
 			});
 

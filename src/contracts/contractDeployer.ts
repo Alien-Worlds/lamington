@@ -35,9 +35,19 @@ export class ContractDeployer {
 	 */
 	public static async deployToAccount<T extends Contract>(
 		contractIdentifier: string,
-		account: Account
+		account: Account,
+		defines?: string[]
 	) {
 		EOSManager.addSigningAccountIfMissing(account);
+
+		const outputPathForContract = (defines: string[] | undefined) => {
+			let pathComponents = [ConfigManager.outDir, 'compiled_contracts'];
+			let definesPath = '';
+			if (defines) {
+				definesPath = defines.join('.');
+			}
+			return path.join(ConfigManager.outDir, 'compiled_contracts', definesPath);
+		};
 
 		// Initialize the serialization buffer
 		const buffer = new Serialize.SerialBuffer({
@@ -45,7 +55,7 @@ export class ContractDeployer {
 			textDecoder: EOSManager.api.textDecoder,
 		});
 
-		const abiPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.abi`);
+		const abiPaths = await glob(`${outputPathForContract(defines)}/**/${contractIdentifier}.abi`);
 		const abiPath = abiPaths[0];
 
 		if (!abiPath) {
@@ -54,7 +64,7 @@ export class ContractDeployer {
 			);
 		}
 
-		const wasmPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.wasm`);
+		const wasmPaths = await glob(`${outputPathForContract(defines)}/**/${contractIdentifier}.wasm`);
 		const wasmPath = wasmPaths[0];
 
 		if (!wasmPath) {
@@ -125,13 +135,14 @@ export class ContractDeployer {
 	 *
 	 * @author Kevin Brown <github.com/thekevinbrown>
 	 * @param contractIdentifier Contract identifier, typically the contract filename minus the extension
+	 * @param defines defines to use to specify a sub-path where to find the compiled contract eg. `['IS_DEV', 'FEATURE_X']`
 	 * @returns Deployed contract instance
 	 */
-	public static async deploy<T extends Contract>(contractIdentifier: string) {
+	public static async deploy<T extends Contract>(contractIdentifier: string, defines?: string[]) {
 		// Create a new account
 		const account = await AccountManager.createAccount();
 		// Call the deployToAccount method with the account
-		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account);
+		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account, defines);
 	}
 
 	/**
@@ -146,17 +157,19 @@ export class ContractDeployer {
 	 * @author Mitch Pierias <github.com/MitchPierias>
 	 * @param contractIdentifier Contract identifier, typically the contract filename minus the extension
 	 * @param accountName Account name
+	 * @param defines Optional defines to use specify where to find the compiled contract
 	 * @returns Deployed contract instance
 	 */
 	public static async deployWithName<T extends Contract>(
 		contractIdentifier: string,
-		accountName: string
+		accountName: string,
+		defines?: string[]
 	) {
 		// Initialize account with name
 		const account = new Account(accountName, EOSManager.adminAccount.privateKey!);
 		await AccountManager.setupAccount(account);
 
 		// Call the deployToAccount method with the account
-		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account);
+		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account, defines);
 	}
 }
