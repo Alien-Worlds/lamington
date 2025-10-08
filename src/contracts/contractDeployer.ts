@@ -54,28 +54,59 @@ export class ContractDeployer {
 			textEncoder: EOSManager.api.textEncoder,
 			textDecoder: EOSManager.api.textDecoder,
 		});
-
-		const abiPaths = await glob(`${outputPathForContract(defines)}/**/${contractIdentifier}.abi`);
+		const selectedDefines = defines ?? ConfigManager.defines;
+		const searchBase = outputPathForContract(selectedDefines);
+		const abiGlob = `${searchBase}/**/${contractIdentifier}.abi`;
+		let abiPaths = await glob(abiGlob);
 		const abiPath = abiPaths[0];
 
 		if (!abiPath) {
+			// Try fallbacks in ConfigManager.compiledContractsSearchPaths
+			for (const fallback of ConfigManager.compiledContractsSearchPaths) {
+				const fbGlob = `${fallback}/**/${contractIdentifier}.abi`;
+				const fbMatches = await glob(fbGlob);
+				if (fbMatches.length > 0) {
+					abiPaths = fbMatches;
+					break;
+				}
+			}
+		}
+
+		const finalAbiPath = (abiPaths && abiPaths[0]) || undefined;
+
+		if (!finalAbiPath) {
 			throw new Error(
-				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier? Search base: '${searchBase}', defines: '${selectedDefines ? selectedDefines.join('.') : 'none'}', glob: '${abiGlob}', fallbacks: '${ConfigManager.compiledContractsSearchPaths.join(', ')}'`
 			);
 		}
 
-		const wasmPaths = await glob(`${outputPathForContract(defines)}/**/${contractIdentifier}.wasm`);
+		const wasmGlob = `${searchBase}/**/${contractIdentifier}.wasm`;
+		let wasmPaths = await glob(wasmGlob);
 		const wasmPath = wasmPaths[0];
 
 		if (!wasmPath) {
+			// Try fallbacks in ConfigManager.compiledContractsSearchPaths
+			for (const fallback of ConfigManager.compiledContractsSearchPaths) {
+				const fbGlob = `${fallback}/**/${contractIdentifier}.wasm`;
+				const fbMatches = await glob(fbGlob);
+				if (fbMatches.length > 0) {
+					wasmPaths = fbMatches;
+					break;
+				}
+			}
+		}
+
+		const finalWasmPath = (wasmPaths && wasmPaths[0]) || undefined;
+
+		if (!finalWasmPath) {
 			throw new Error(
-				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier? Search base: '${searchBase}', defines: '${selectedDefines ? selectedDefines.join('.') : 'none'}', glob: '${wasmGlob}', fallbacks: '${ConfigManager.compiledContractsSearchPaths.join(', ')}'`
 			);
 		}
 
 		// Read resources files for paths
-		let abi = JSON.parse(await readFile(abiPath!, 'utf8'));
-		const wasm = await readFile(wasmPath!);
+		let abi = JSON.parse(await readFile(finalAbiPath!, 'utf8'));
+		const wasm = await readFile(finalWasmPath!);
 		// Extract ABI types
 		const abiDefinition = EOSManager.api.abiTypes.get(`abi_def`);
 		// Validate ABI definitions returned
@@ -117,7 +148,8 @@ export class ContractDeployer {
 			});
 		} catch (e) {
 			/* If this exact version of the contract is already deployed, the error can safely be ignored */
-			if (e.json.error.what != 'Contract is already running this version of code') {
+			const err = e as any;
+			if (err.json?.error?.what != 'Contract is already running this version of code') {
 				throw e;
 			}
 		}

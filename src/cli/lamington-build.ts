@@ -36,6 +36,8 @@ console.log(
 const run = async () => {
 	// Initialize Lamington configuration
 	await ConfigManager.initWithDefaults();
+    // Propagate CLI defines to runtime for consistency across flows
+    ConfigManager.setActiveDefines(program.defines);
 	// Start the EOSIO container image if it's not running.
 	if (!(await eosIsReady())) {
 		await startEos();
