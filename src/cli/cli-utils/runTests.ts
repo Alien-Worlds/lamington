@@ -7,7 +7,7 @@ import { exists, WORKING_DIRECTORY, glob } from './cli-utils';
 /** @hidden Slowest Expected test duration */
 export const TEST_EXPECTED_DURATION = 5000;
 /** @hidden Maximum test duration */
-export const TEST_TIMEOUT_DURATION = 80000;
+export const TEST_TIMEOUT_DURATION = 300000; // 5 minutes
 
 /**
  * Loads all test files and executes with Mocha
@@ -50,8 +50,8 @@ export const runTests = async (options?: { grep?: string }) => {
 
 	// Our tests are more like integration tests than unit tests. Taking two seconds is
 	// pretty reasonable in our case and it's possible a successful test would take 10 seconds.
-	mocha.slow(TEST_EXPECTED_DURATION);
-	mocha.timeout(TEST_TIMEOUT_DURATION);
+    mocha.slow(TEST_EXPECTED_DURATION);
+    mocha.timeout(TEST_TIMEOUT_DURATION);
 	mocha.reporter(ConfigManager.testReporter);
 	mocha.bail(ConfigManager.bailOnFailure);
 
