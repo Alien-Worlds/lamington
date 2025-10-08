@@ -42,6 +42,8 @@ console.log(
 const run = async (options: { grep?: string | undefined } | undefined) => {
 	// Initialize the configuration
 	await ConfigManager.initWithDefaults();
+	// Propagate CLI defines to runtime so ContractDeployer can pick correct artifacts
+	ConfigManager.setActiveDefines(program.defines);
 
 	// Stop running instances for fresh test environment
 	if (await eosIsReady()) {
