@@ -35,37 +35,78 @@ export class ContractDeployer {
 	 */
 	public static async deployToAccount<T extends Contract>(
 		contractIdentifier: string,
-		account: Account
+		account: Account,
+		defines?: string[]
 	) {
 		EOSManager.addSigningAccountIfMissing(account);
+
+		const outputPathForContract = (defines: string[] | undefined) => {
+			let pathComponents = [ConfigManager.outDir, 'compiled_contracts'];
+			let definesPath = '';
+			if (defines) {
+				definesPath = defines.join('.');
+			}
+			return path.join(ConfigManager.outDir, 'compiled_contracts', definesPath);
+		};
 
 		// Initialize the serialization buffer
 		const buffer = new Serialize.SerialBuffer({
 			textEncoder: EOSManager.api.textEncoder,
 			textDecoder: EOSManager.api.textDecoder,
 		});
-
-		const abiPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.abi`);
+		const selectedDefines = defines ?? ConfigManager.defines;
+		const searchBase = outputPathForContract(selectedDefines);
+		const abiGlob = `${searchBase}/**/${contractIdentifier}.abi`;
+		let abiPaths = await glob(abiGlob);
 		const abiPath = abiPaths[0];
 
 		if (!abiPath) {
+			// Try fallbacks in ConfigManager.compiledContractsSearchPaths
+			for (const fallback of ConfigManager.compiledContractsSearchPaths) {
+				const fbGlob = `${fallback}/**/${contractIdentifier}.abi`;
+				const fbMatches = await glob(fbGlob);
+				if (fbMatches.length > 0) {
+					abiPaths = fbMatches;
+					break;
+				}
+			}
+		}
+
+		const finalAbiPath = (abiPaths && abiPaths[0]) || undefined;
+
+		if (!finalAbiPath) {
 			throw new Error(
-				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find ABI for ${contractIdentifier}. Are you sure you used the correct contract identifier? Search base: '${searchBase}', defines: '${selectedDefines ? selectedDefines.join('.') : 'none'}', glob: '${abiGlob}', fallbacks: '${ConfigManager.compiledContractsSearchPaths.join(', ')}'`
 			);
 		}
 
-		const wasmPaths = await glob(`${ConfigManager.outDir}/**/${contractIdentifier}.wasm`);
+		const wasmGlob = `${searchBase}/**/${contractIdentifier}.wasm`;
+		let wasmPaths = await glob(wasmGlob);
 		const wasmPath = wasmPaths[0];
 
 		if (!wasmPath) {
+			// Try fallbacks in ConfigManager.compiledContractsSearchPaths
+			for (const fallback of ConfigManager.compiledContractsSearchPaths) {
+				const fbGlob = `${fallback}/**/${contractIdentifier}.wasm`;
+				const fbMatches = await glob(fbGlob);
+				if (fbMatches.length > 0) {
+					wasmPaths = fbMatches;
+					break;
+				}
+			}
+		}
+
+		const finalWasmPath = (wasmPaths && wasmPaths[0]) || undefined;
+
+		if (!finalWasmPath) {
 			throw new Error(
-				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier?`
+				`ContractDeployer couldn't find WASM file for ${contractIdentifier}. Are you sure you used the correct contract identifier? Search base: '${searchBase}', defines: '${selectedDefines ? selectedDefines.join('.') : 'none'}', glob: '${wasmGlob}', fallbacks: '${ConfigManager.compiledContractsSearchPaths.join(', ')}'`
 			);
 		}
 
 		// Read resources files for paths
-		let abi = JSON.parse(await readFile(abiPath!, 'utf8'));
-		const wasm = await readFile(wasmPath!);
+		let abi = JSON.parse(await readFile(finalAbiPath!, 'utf8'));
+		const wasm = await readFile(finalWasmPath!);
 		// Extract ABI types
 		const abiDefinition = EOSManager.api.abiTypes.get(`abi_def`);
 		// Validate ABI definitions returned
@@ -107,7 +148,8 @@ export class ContractDeployer {
 			});
 		} catch (e) {
 			/* If this exact version of the contract is already deployed, the error can safely be ignored */
-			if (e.json.error.what != 'Contract is already running this version of code') {
+			const err = e as any;
+			if (err.json?.error?.what != 'Contract is already running this version of code') {
 				throw e;
 			}
 		}
@@ -125,13 +167,14 @@ export class ContractDeployer {
 	 *
 	 * @author Kevin Brown <github.com/thekevinbrown>
 	 * @param contractIdentifier Contract identifier, typically the contract filename minus the extension
+	 * @param defines defines to use to specify a sub-path where to find the compiled contract eg. `['IS_DEV', 'FEATURE_X']`
 	 * @returns Deployed contract instance
 	 */
-	public static async deploy<T extends Contract>(contractIdentifier: string) {
+	public static async deploy<T extends Contract>(contractIdentifier: string, defines?: string[]) {
 		// Create a new account
 		const account = await AccountManager.createAccount();
 		// Call the deployToAccount method with the account
-		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account);
+		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account, defines);
 	}
 
 	/**
@@ -146,17 +189,19 @@ export class ContractDeployer {
 	 * @author Mitch Pierias <github.com/MitchPierias>
 	 * @param contractIdentifier Contract identifier, typically the contract filename minus the extension
 	 * @param accountName Account name
+	 * @param defines Optional defines to use specify where to find the compiled contract
 	 * @returns Deployed contract instance
 	 */
 	public static async deployWithName<T extends Contract>(
 		contractIdentifier: string,
-		accountName: string
+		accountName: string,
+		defines?: string[]
 	) {
 		// Initialize account with name
 		const account = new Account(accountName, EOSManager.adminAccount.privateKey!);
 		await AccountManager.setupAccount(account);
 
 		// Call the deployToAccount method with the account
-		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account);
+		return await ContractDeployer.deployToAccount<T>(contractIdentifier, account, defines);
 	}
 }

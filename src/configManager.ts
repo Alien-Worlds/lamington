@@ -37,6 +37,8 @@ export interface LamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	/** Optional additional search paths for compiled contracts as fallbacks */
+	compiledContractsSearchPaths?: string[];
 }
 
 export interface DefaultLamingtonConfig {
@@ -55,6 +57,7 @@ export interface DefaultLamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	compiledContractsSearchPaths: string[];
 }
 
 /**
@@ -101,6 +104,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	reporterOptions: 0,
 	cppFlags: '',
 	benchmark: true,
+	compiledContractsSearchPaths: [],
 };
 
 /**
@@ -109,6 +113,8 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 export class ConfigManager {
 	/** @hidden EOSIO and EOSIO.CDT configuration settings */
 	private static config: LamingtonConfig;
+	/** @hidden Active CLI-provided defines for current run (not persisted) */
+	private static activeDefines?: string[];
 
 	/**
 	 * Initialize application configuration using the user
@@ -218,6 +224,20 @@ export class ConfigManager {
 			...DEFAULT_CONFIG,
 			...JSON.parse(await readFile(atPath, ENCODING)),
 		};
+	}
+
+	/**
+	 * Sets the active defines for the current process. These are not persisted to disk.
+	 */
+	public static setActiveDefines(defines?: string[]) {
+		ConfigManager.activeDefines = defines;
+	}
+
+	/**
+	 * Returns the active defines for the current process, if any were provided via CLI.
+	 */
+	static get defines(): string[] | undefined {
+		return ConfigManager.activeDefines;
 	}
 
 	/**
@@ -346,5 +366,15 @@ export class ConfigManager {
 
 	static get benchmark() {
 		return ConfigManager.config && ConfigManager.config.benchmark;
+	}
+
+	/**
+	 * Returns additional search paths for compiled contracts
+	 */
+	static get compiledContractsSearchPaths(): string[] {
+		return (
+			(ConfigManager.config && ConfigManager.config.compiledContractsSearchPaths) ||
+			DEFAULT_CONFIG.compiledContractsSearchPaths
+		);
 	}
 }
