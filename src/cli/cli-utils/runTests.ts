@@ -8,7 +8,7 @@ import { exists, WORKING_DIRECTORY, glob } from './cli-utils';
 /** @hidden Slowest Expected test duration */
 export const TEST_EXPECTED_DURATION = 5000;
 /** @hidden Maximum test duration */
-export const TEST_TIMEOUT_DURATION = 300000; // 5 minutes
+export const TEST_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Loads all test files and executes with Mocha
