@@ -1,5 +1,6 @@
 import * as Mocha from 'mocha';
 import * as path from 'path';
+import * as minimatch from 'minimatch';
 import { EOSManager } from '../../eosManager';
 import { ConfigManager } from '../../configManager';
 import { exists, WORKING_DIRECTORY, glob } from './cli-utils';
@@ -7,7 +8,7 @@ import { exists, WORKING_DIRECTORY, glob } from './cli-utils';
 /** @hidden Slowest Expected test duration */
 export const TEST_EXPECTED_DURATION = 5000;
 /** @hidden Maximum test duration */
-export const TEST_TIMEOUT_DURATION = 300000; // 5 minutes
+export const TEST_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Loads all test files and executes with Mocha
@@ -37,6 +38,13 @@ export const runTests = async (options?: { grep?: string }) => {
 		...(await glob('**/contracts/**/*.{test,spec}.{js,ts}')),
 	];
 
+	// Filter out files matching excludeTests patterns
+	const filteredFiles = files.filter(file => {
+		return !ConfigManager.excludeTests.some(pattern => 
+			minimatch(file, pattern)
+		);
+	});
+
 	// Instantiate a Mocha instance.
 	const mocha = new Mocha();
 	if (options?.grep) {
@@ -44,7 +52,7 @@ export const runTests = async (options?: { grep?: string }) => {
 		console.log('Applying grep filter to tests: ', options.grep);
 	}
 
-	for (const testFile of files) {
+	for (const testFile of filteredFiles) {
 		mocha.addFile(path.join(WORKING_DIRECTORY, testFile));
 	}
 

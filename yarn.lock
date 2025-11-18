@@ -562,7 +562,7 @@ cli-spinners@^2.4.0, cli-spinners@^2.6.1:
   resolved "https://registry.yarnpkg.com/cli-spinners/-/cli-spinners-2.7.0.tgz#f815fd30b5f9eaac02db604c7a231ed7cb2f797a"
   integrity sha512-qu3pN8Y3qHNgE2AFweciB1IfMnmZ/fsNTEE+NOFjmGB2F/7rLhnhzppvpCnN4FovtP26k8lHyy9ptEbNwWFLzw==
 
-cli-table-2-json@1.0.13:
+cli-table-2-json@1.0.13, cli-table-2-json@^1.0.13:
   version "1.0.13"
   resolved "https://registry.yarnpkg.com/cli-table-2-json/-/cli-table-2-json-1.0.13.tgz#33d5be36851477854b004356197a6409c7370aea"
   integrity sha512-CpUj9dubfuIZSEezwUPycAJqM2dlATyyRUyBkfGeK2KNfrqK3XrdaBohMt0XlkEvsZyDfUEmPWCNvUO+a/7Wsw==
@@ -761,16 +761,16 @@ diff@^3.1.0:
   resolved "https://registry.yarnpkg.com/diff/-/diff-3.5.0.tgz#800c0dd1e0a8bfbc95835c202ad220fe317e5a12"
   integrity sha512-A46qtFgd+g7pDZinpnwiRJtxbC1hpgf0uzP3iG89scHk0AUC7A1TGxf5OiiOUv/JMZR8GOt8hL900hV0bOy5xA==
 
-"docker-cli-js@https://github.com/Alien-Worlds/docker-cli-js#add-ability-to-install-from-github":
+"docker-cli-js@https://github.com/Alien-Worlds/docker-cli-js":
   version "2.10.0"
-  resolved "https://github.com/Alien-Worlds/docker-cli-js#10a45d0b29b83571d0bf3626667f886af4ac1154"
+  resolved "https://github.com/Alien-Worlds/docker-cli-js#2e28fd9673435bb62e9360bc801c14588109fec8"
   dependencies:
-    cli-table-2-json "1.0.13"
-    dockermachine-cli-js "3.0.5"
+    cli-table-2-json "^1.0.13"
+    dockermachine-cli-js "^3.0.5"
     lodash.snakecase "^4.1.1"
-    nodeify-ts "1.0.6"
+    nodeify-ts "^1.0.6"
 
-dockermachine-cli-js@3.0.5:
+dockermachine-cli-js@^3.0.5:
   version "3.0.5"
   resolved "https://registry.yarnpkg.com/dockermachine-cli-js/-/dockermachine-cli-js-3.0.5.tgz#7e7aa37adba885572e6b59ed9050fe347e558227"
   integrity sha512-oV9RRKGvWrvsGl8JW9TWKpjBJVGxn/1qMvhqwPJiOPfRES0+lrq/Q8Wzixb6qinuXPVBhlWqhXb/Oxrh6Vuf/g==
@@ -1731,7 +1731,7 @@ node-fetch@^2.6.0:
   dependencies:
     whatwg-url "^5.0.0"
 
-nodeify-ts@1.0.6:
+nodeify-ts@1.0.6, nodeify-ts@^1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/nodeify-ts/-/nodeify-ts-1.0.6.tgz#ceef172c4fad1a45a1ae60a31c7e295150b5e221"
   integrity sha512-jq+8sqVG1aLqy5maMTceL8NUJ1CvarWztlxvrYh3G0aao9BsVeoVmVedUnrUSBLetP7oLIAJrPrw4+iIo7v3GA==

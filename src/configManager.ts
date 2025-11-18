@@ -29,6 +29,7 @@ export interface LamingtonConfig {
 	outDir?: string;
 	include?: Array<string>;
 	exclude?: Array<string>;
+	excludeTests?: Array<string>;
 	debugTransactions?: boolean;
 	debug: LamingtonDebugLevel;
 	reporter?: any;
@@ -49,6 +50,7 @@ export interface DefaultLamingtonConfig {
 	outDir: string;
 	include: Array<string>;
 	exclude: Array<string>;
+	excludeTests: Array<string>;
 	debugTransactions: boolean;
 	debug: LamingtonDebugLevel;
 	reporter: any;
@@ -98,6 +100,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	outDir: CACHE_DIRECTORY,
 	include: ['.*'],
 	exclude: [],
+	excludeTests: [],
 	bailOnFailure: false,
 	skipSystemContracts: false,
 	reporter: Mocha.reporters.Min,
@@ -329,6 +332,13 @@ export class ConfigManager {
 	 */
 	static get exclude() {
 		return (ConfigManager.config && ConfigManager.config.exclude) || DEFAULT_CONFIG.exclude;
+	}
+
+	/**
+	 * Returns the array of excluded glob patterns for test files
+	 */
+	static get excludeTests() {
+		return (ConfigManager.config && ConfigManager.config.excludeTests) || DEFAULT_CONFIG.excludeTests;
 	}
 
 	/**
