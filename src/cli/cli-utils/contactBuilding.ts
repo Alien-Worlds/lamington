@@ -112,8 +112,9 @@ export const build = async (
 			await generateTypes(contractPath, defines);
 			spinner.end(`Generated type definitions: ` + contractPath);
 		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			spinner.fail(`Failed to generate type definitions: ` + contractPath);
-			console.log(` --> ${error.message}`);
+			console.log(` --> ${message}`);
 		}
 	}
 };

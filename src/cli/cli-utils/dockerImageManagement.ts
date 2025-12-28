@@ -96,9 +96,13 @@ export const imageExists = async () => {
 export const startContainer = async () => {
 	try {
 		await docker.command(`network create -d bridge lamington`);
-	} catch (e) {
-		if (e.stderr != 'Error response from daemon: network with name lamington already exists\n') {
-			throw e;
+	} catch (error) {
+		const stderr =
+			typeof error === 'object' && error && 'stderr' in error
+				? String((error as { stderr?: unknown }).stderr)
+				: '';
+		if (stderr !== 'Error response from daemon: network with name lamington already exists\n') {
+			throw error;
 		}
 		// console.log(`error: ${JSON.stringify(e.stderr, null, 2)}`);
 	}
@@ -139,8 +143,9 @@ export const stopContainer = async () => {
 	try {
 		await docker.command('kill lamington');
 		spinner.end('Stopped EOS Docker Container');
-	} catch (err) {
-		spinner.fail(err);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		spinner.fail(message);
 	}
 };
 /**
