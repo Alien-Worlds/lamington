@@ -189,19 +189,26 @@ const assertExpectedEOSError = async (
 	try {
 		await operation;
 	} catch (error) {
-		if (error.json && error.json.error && error.json.error.name) {
+		const err = error as {
+			json?: {
+				error?: {
+					name?: string;
+				};
+			};
+		};
+		if (err?.json?.error?.name) {
 			// Compare error and fail if the error doesn't match the expected
 			assert(
-				error.json.error.name === eosErrorName,
-				`Expected ${eosErrorName}, got ${JSON.stringify(error, null, 4)} instead.`
+				err.json.error.name === eosErrorName,
+				`Expected ${eosErrorName}, got ${JSON.stringify(err, null, 4)} instead.`
 			);
 			if (furtherErrorCheck) {
-				furtherErrorCheck(error);
+				furtherErrorCheck(err);
 			}
 		} else {
 			// Fail if error not thrown by EOS
 			assert.fail(
-				`Expected EOS error ${eosErrorName}, but got ${JSON.stringify(error, null, 4)} instead.`
+				`Expected EOS error ${eosErrorName}, but got ${JSON.stringify(err, null, 4)} instead.`
 			);
 		}
 		return true;
@@ -221,7 +228,7 @@ export const assertEOSError = async (
 	eosErrorName: string,
 	description: string
 ) => {
-	if (assertExpectedEOSError(operation, eosErrorName)) {
+	if (await assertExpectedEOSError(operation, eosErrorName)) {
 		// Execute operation and handle exceptions
 		assert.fail(`Expected ${description} but operation completed successfully.`);
 	}
