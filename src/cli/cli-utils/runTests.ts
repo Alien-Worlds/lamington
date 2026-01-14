@@ -1,6 +1,6 @@
 import * as Mocha from 'mocha';
 import * as path from 'path';
-import * as minimatch from 'minimatch';
+import { minimatch } from 'minimatch';
 import { EOSManager } from '../../eosManager';
 import { ConfigManager } from '../../configManager';
 import { exists, WORKING_DIRECTORY, glob } from './cli-utils';
