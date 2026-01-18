@@ -8,7 +8,7 @@ import {
 	readdir as readdirCallback,
 } from 'fs';
 import { ncp as ncpCallback } from 'ncp';
-import * as rimrafCallback from 'rimraf';
+import { rimraf } from 'rimraf';
 import { promisify } from 'util';
 import { ConfigManager } from './../configManager';
 import * as spinner from '../cli/cli-utils/logIndicator';
@@ -19,7 +19,6 @@ const exists = promisify(existsCallback);
 const writeFile = promisify(writeFileCallback);
 const readFile = promisify(readFileCallback);
 const readdir = promisify(readdirCallback);
-const rimraf = promisify(rimrafCallback);
 const ncp = promisify(ncpCallback);
 
 /** Default encoding */

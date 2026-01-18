@@ -1,13 +1,11 @@
-import * as globWithCallbacks from 'glob';
+import { glob } from 'glob';
 import * as fs from 'fs';
 import * as path from 'path';
-import { promisify } from 'util';
 import mapTypes from './typeMap';
 import { ConfigManager } from '../configManager';
 import { pascalCase, camelCase } from './utils';
 import { log } from 'console';
 import { outputPathForContract } from '../cli/cli-utils/contractCompiling';
-const glob = promisify(globWithCallbacks);
 import { pathToIdentifier } from '../cli/cli-utils/contactBuilding';
 
 type IndentedGeneratorLevel = { [key: string]: Array<string> | IndentedGeneratorLevel };

@@ -3,11 +3,10 @@ import { readFile as readFileCallback, exists as existsCallback } from 'fs';
 import { promisify } from 'util';
 import { Serialize } from 'eosjs';
 import * as ecc from 'eosjs-ecc';
-import * as globCallback from 'glob';
+import { glob } from 'glob';
 
 const exists = promisify(existsCallback);
 const readFile = promisify(readFileCallback);
-const glob = promisify(globCallback);
 
 import { Contract } from './contract';
 import { Account, AccountManager } from '../accounts';

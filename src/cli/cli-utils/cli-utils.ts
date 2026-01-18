@@ -1,16 +1,15 @@
-import * as rimrafCallback from 'rimraf';
+import { rimraf } from 'rimraf';
 import {
 	writeFile as writeFileCallback,
 	exists as existsCallback,
 	readFile as readFileCallback,
 	stat as statFileCallback,
 } from 'fs';
-import * as globCallback from 'glob';
+import { glob } from 'glob';
 import { promisify } from 'util';
 
 export const exists = promisify(existsCallback);
-export const glob = promisify(globCallback);
-export const rimraf = promisify(rimrafCallback);
+export { glob, rimraf };
 export const writeFile = promisify(writeFileCallback);
 export const readFile = promisify(readFileCallback);
 export const statFile = promisify(statFileCallback);
