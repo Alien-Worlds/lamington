@@ -1,8 +1,16 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import * as qrcode from 'qrcode-terminal';
 import { sleep } from '../../utils';
-import { buildImage, imageExists, startContainer } from './dockerImageManagement';
+import { buildImage, imageExists, startContainer, versionFromUrl } from './dockerImageManagement';
 import * as spinner from './logIndicator';
+import { ConfigManager } from '../../configManager';
+import {
+	createSnapshot,
+	restoreSnapshot,
+	listSnapshots,
+	areSystemContractsInstalled,
+	isSnapshotCompatible,
+} from './blockchainSnapshotManagement';
 
 /** @hidden Maximum number of EOS connection attempts before fail */
 export const MAX_CONNECTION_ATTEMPTS = 40;
@@ -14,11 +22,49 @@ export const MAX_CONNECTION_ATTEMPTS = 40;
  * @author Mitch Pierias <github.com/MitchPierias>
  */
 
-export const startEos = async () => {
+export const startEos = async (useSnapshot?: boolean) => {
 	// spinner.create('Starting EOS docker container');
 	// Ensure an EOSIO build image exists
 	console.log('Starting EOS docker container');
 	console.log('ensure an EOSIO build image exists');
+
+	// Check if we should use snapshot
+	const shouldUseSnapshot = useSnapshot || false; // TODO: Add ConfigManager.useSnapshots
+
+	if (shouldUseSnapshot) {
+		// Try to restore from latest compatible snapshot
+		const snapshots = await listSnapshots();
+		const compatibleSnapshot = snapshots.find((s) => isSnapshotCompatible(s.metadata));
+
+		if (compatibleSnapshot) {
+			console.log(`Found compatible snapshot: ${compatibleSnapshot.name}`);
+			const restoreSuccess = await restoreSnapshot(compatibleSnapshot.name);
+
+			if (restoreSuccess) {
+				console.log('Blockchain restored from snapshot successfully');
+				// Start container with restored data
+				await startContainer();
+				await untilEosIsReady();
+				console.log(
+					'                                        \n\
+\
+==================================================== \n\
+\
+     EOS running from snapshot, admin account created.            \n\
+\
+     RPC: http://localhost:8888                     \n\\t Docker Container: lamington                    \n\
+\
+==================================================== \n'
+				);
+				spinner.end('Started EOS docker container from snapshot');
+				return;
+			} else {
+				console.log('Snapshot restoration failed, falling back to full initialization');
+			}
+		} else {
+			console.log('No compatible snapshot found, proceeding with full initialization');
+		}
+	}
 	if (!(await imageExists())) {
 		console.log('--------------------------------------------------------------');
 		console.log('Docker image does not yet exist. Building...');
@@ -53,6 +99,20 @@ export const startEos = async () => {
 ==================================================== \n'
 		);
 		spinner.end('Started EOS docker container');
+
+		// Auto-create snapshot if configured and system contracts are installed
+		if (false) {
+			// TODO: Add ConfigManager.autoCreateSnapshot
+			try {
+				const contractsInstalled = await areSystemContractsInstalled();
+				if (contractsInstalled) {
+					console.log('Auto-creating snapshot after system contracts installation...');
+					await createSnapshot();
+				}
+			} catch (snapshotError) {
+				console.log('Failed to auto-create snapshot:', snapshotError);
+			}
+		}
 	} catch (error) {
 		spinner.fail('Failed to start the EOS container');
 		console.log(` --> ${error}`);
@@ -116,3 +176,5 @@ export const untilEosIsReady = async (attempts: number = MAX_CONNECTION_ATTEMPTS
 	spinner.fail(`Failed to connect with an EOS instance`);
 	throw new Error(`Could not contact EOS after trying for ${attempts} second(s).`);
 };
+
+
