@@ -10,13 +10,7 @@ import {
 } from './dockerImageManagement';
 import * as spinner from './logIndicator';
 import { ConfigManager } from '../../configManager';
-import {
-	createSnapshot,
-	restoreSnapshot,
-	listSnapshots,
-	areSystemContractsInstalled,
-	isSnapshotCompatible,
-} from './blockchainSnapshotManagement';
+import { restoreSnapshot, findCompatibleSnapshot } from './blockchainSnapshotManagement';
 
 /** @hidden Maximum number of EOS connection attempts before fail */
 export const MAX_CONNECTION_ATTEMPTS = 40;
@@ -52,13 +46,9 @@ export const startEos = async (useSnapshot: boolean = true) => {
 	console.log('Starting EOS docker container');
 	console.log('ensure an EOSIO build image exists');
 
-	// Check if we should use snapshot
-	const shouldUseSnapshot = useSnapshot || false; // TODO: Add ConfigManager.useSnapshots
-
-	if (shouldUseSnapshot) {
-		// Try to restore from latest compatible snapshot
-		const snapshots = await listSnapshots();
-		const compatibleSnapshot = snapshots.find((s) => isSnapshotCompatible(s.metadata));
+	// Restoring has to be asked for by the caller and enabled in config
+	if (useSnapshot && ConfigManager.useSnapshots) {
+		const compatibleSnapshot = await findCompatibleSnapshot();
 
 		if (compatibleSnapshot) {
 			console.log(`Found compatible snapshot: ${compatibleSnapshot.name}`);
@@ -130,25 +120,6 @@ export const startEos = async (useSnapshot: boolean = true) => {
 		await untilEosIsReady();
 		printReadyBanner('EOS running, admin account created.');
 		spinner.end('Started EOS docker container');
-
-		// Auto-create snapshot if configured and system contracts are installed
-		if (false) {
-			// Disabled - snapshots are now created by init script after full setup
-			// TODO: Add ConfigManager.autoCreateSnapshot - disabled for now
-			try {
-						// Wait for container to stabilize
-						console.log('Waiting for container to stabilize before snapshot...');
-						await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
-
-						const contractsInstalled = await areSystemContractsInstalled();
-						if (contractsInstalled) {
-							console.log('Auto-creating snapshot after system contracts installation...');
-							await createSnapshot();
-						}
-					} catch (snapshotError) {
-				console.log('Failed to auto-create snapshot:', snapshotError);
-			}
-		}
 	} catch (error) {
 		spinner.fail('Failed to start the EOS container');
 		console.log(` --> ${error}`);
@@ -163,8 +134,6 @@ export const startEos = async (useSnapshot: boolean = true) => {
 
 export const eosIsReady = async () => {
 	try {
-		console.log('DEBUG: eosIsReady() checking if EOS is available...');
-		
 		const data = JSON.stringify({ account_name: 'eosio', code_as_wasm: 1 });
 
 		const config: AxiosRequestConfig = {
@@ -177,23 +146,15 @@ export const eosIsReady = async () => {
 			timeout: 5000, // 5 second timeout
 		};
 
-		console.log('DEBUG: Making HTTP request to EOS endpoint...');
-		const startTime = Date.now();
 		const info = await axios(config);
-		const requestTime = Date.now() - startTime;
 
-		console.log(`DEBUG: HTTP request completed in ${requestTime}ms, status: ${info.status}`);
-
-		const isReady =
+		return (
 			info &&
 			info.status === 200 &&
 			info.data &&
-			info.data.code_hash != 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14';
-		
-		console.log('DEBUG: eosIsReady() result:', isReady);
-		return isReady;
+			info.data.code_hash != 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14'
+		);
 	} catch (error: unknown) {
-		console.log('DEBUG: eosIsReady() failed with error:', error instanceof Error ? error.message : String(error));
 		return false;
 	}
 };
