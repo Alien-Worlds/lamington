@@ -55,12 +55,12 @@ program
 program
     .command('create')
     .description('Create a new snapshot')
-    .option('-n, --name <name>', 'Custom snapshot name')
+    .option('-n, --snapshot-name <name>', 'Custom snapshot name')
     .action(async (options) => {
         try {
             await ConfigManager.loadConfigFromDisk();
-            
-            const snapshotName = options.name || undefined;
+
+            const snapshotName = options.snapshotName || undefined;
             console.log(`Creating snapshot${snapshotName ? ` "${snapshotName}"` : ''}...`);
             
             const snapshotPath = await createSnapshot(snapshotName);
@@ -102,12 +102,10 @@ program
     .action(async (options) => {
         try {
             if (!options.force) {
-                console.log('This will delete ALL snapshots. Are you sure? (y/n)');
-                
-                // Simple confirmation (would need more robust input handling for production)
-                // For now, we'll skip this in the CLI version
+                console.log('This will delete ALL snapshots. Re-run with --force to confirm.');
+                return;
             }
-            
+
             await ConfigManager.loadConfigFromDisk();
             const deletedCount = await deleteAllSnapshots();
             console.log(`Deleted ${deletedCount} snapshots`);

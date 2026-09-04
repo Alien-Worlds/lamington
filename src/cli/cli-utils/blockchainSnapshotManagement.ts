@@ -11,14 +11,10 @@ import { versionFromUrl } from './dockerImageManagement';
 /** @hidden Snapshot directory path */
 const SNAPSHOT_DIRECTORY = path.join('.lamington', 'snapshots');
 
-/** @hidden Maximum snapshot retention */
-const MAX_SNAPSHOT_RETENTION = 5;
 
 /** @hidden Number of one second polls to await full system contract initialization */
-const SYSTEM_CONTRACT_POLL_ATTEMPTS = 30;
+const SYSTEM_CONTRACT_POLL_ATTEMPTS = 180;
 
-/** @hidden Filename used for the snapshot taken after a full initialization */
-const POST_INITIALIZATION_SNAPSHOT_NAME = 'post-full-initialization-snapshot.tar.gz';
 
 /** @hidden Snapshot metadata structure */
 export interface SnapshotMetadata {
@@ -558,7 +554,9 @@ export const deleteSnapshot = async (snapshotName: string): Promise<boolean> => 
  * @param maxRetention Maximum number of snapshots to keep
  * @returns Number of snapshots deleted
  */
-const cleanupSnapshots = async (maxRetention: number = MAX_SNAPSHOT_RETENTION): Promise<number> => {
+export const cleanupSnapshots = async (
+	maxRetention: number = ConfigManager.snapshotRetention
+): Promise<number> => {
 	const snapshots = await listSnapshots();
 
 	if (snapshots.length <= maxRetention) {
@@ -639,6 +637,10 @@ export const waitForSystemContracts = async (
  * @returns Path to the created snapshot, or null when none was created
  */
 export const createSnapshotIfNeeded = async (): Promise<string | null> => {
+	if (!ConfigManager.autoCreateSnapshot) {
+		return null;
+	}
+
 	try {
 		const compatibleSnapshot = await findCompatibleSnapshot();
 
@@ -654,12 +656,17 @@ export const createSnapshotIfNeeded = async (): Promise<string | null> => {
 			return null;
 		}
 
-		// Replace any existing snapshots, which are by definition incompatible
-		const deletedCount = await deleteAllSnapshots();
-		console.log(`Deleted ${deletedCount} old snapshot(s)`);
-
-		const snapshotPath = await createSnapshot(POST_INITIALIZATION_SNAPSHOT_NAME);
+		// No explicit name: the generated filename carries the eos and contracts
+		// versions, so snapshots for different toolchains coexist under retention
+		const snapshotPath = await createSnapshot();
 		console.log(`Snapshot created successfully: ${snapshotPath}`);
+
+		// Trim to the retention policy rather than wiping every other snapshot,
+		// so snapshots for other eos/contracts versions survive
+		const deletedCount = await cleanupSnapshots();
+		if (deletedCount > 0) {
+			console.log(`Removed ${deletedCount} snapshot(s) beyond the retention limit`);
+		}
 
 		return snapshotPath;
 	} catch (error) {

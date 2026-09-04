@@ -38,6 +38,12 @@ export interface LamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	/** Restore from a compatible snapshot instead of initializing from scratch */
+	useSnapshots?: boolean;
+	/** Snapshot the chain automatically once it is fully initialized */
+	autoCreateSnapshot?: boolean;
+	/** Number of snapshots to keep */
+	snapshotRetention?: number;
 	/** Name of the docker container running the chain */
 	containerName?: string;
 	/** Host port mapped to the container's RPC port */
@@ -67,6 +73,9 @@ export interface DefaultLamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	useSnapshots: boolean;
+	autoCreateSnapshot: boolean;
+	snapshotRetention: number;
 	containerName: string;
 	rpcPort: number;
 	stateHistoryPort: number;
@@ -120,6 +129,9 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	cppFlags: '',
 	benchmark: true,
 	compiledContractsSearchPaths: [],
+	useSnapshots: true,
+	autoCreateSnapshot: true,
+	snapshotRetention: 5,
 	containerName: 'lamington',
 	rpcPort: 8888,
 	stateHistoryPort: 8080,
@@ -402,6 +414,36 @@ export class ConfigManager {
 		return (
 			(ConfigManager.config && ConfigManager.config.compiledContractsSearchPaths) ||
 			DEFAULT_CONFIG.compiledContractsSearchPaths
+		);
+	}
+
+	/**
+	 * Whether a compatible snapshot should be restored instead of initializing a
+	 * chain from scratch
+	 */
+	static get useSnapshots(): boolean {
+		return ConfigManager.config && ConfigManager.config.useSnapshots !== undefined
+			? ConfigManager.config.useSnapshots
+			: DEFAULT_CONFIG.useSnapshots;
+	}
+
+	/**
+	 * Whether a snapshot should be created automatically once the chain is fully
+	 * initialized
+	 */
+	static get autoCreateSnapshot(): boolean {
+		return ConfigManager.config && ConfigManager.config.autoCreateSnapshot !== undefined
+			? ConfigManager.config.autoCreateSnapshot
+			: DEFAULT_CONFIG.autoCreateSnapshot;
+	}
+
+	/**
+	 * Returns the number of snapshots to keep
+	 */
+	static get snapshotRetention(): number {
+		return (
+			(ConfigManager.config && ConfigManager.config.snapshotRetention) ||
+			DEFAULT_CONFIG.snapshotRetention
 		);
 	}
 

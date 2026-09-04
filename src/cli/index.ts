@@ -12,6 +12,7 @@ program
 	.command('start', 'start the eos blockchain in docker')
 	.command('stop', 'stop the eos blockchain in docker')
 	.command('test', 'run your unit / integration tests')
+	.command('snapshots', 'manage blockchain snapshots')
 	.on('*', () => {
 		console.log('Unknown Command: ' + program.args.join(' '));
 		program.help();
