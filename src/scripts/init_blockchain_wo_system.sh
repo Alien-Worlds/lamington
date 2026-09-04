@@ -18,6 +18,7 @@ nodeos -e -p eosio -d /mnt/dev/data \
   --config-dir /mnt/dev/config \
   --genesis-json /mnt/dev/config/genesis.json \
   --disable-replay-opts &
+nodeos_pid=$!
 
 until $(curl --output /dev/null \
              --silent \
@@ -132,5 +133,12 @@ cleos wallet import -n eosiomain --private-key $syskey_priv
 # echo BLOCKCHAIN_PARAMETERS
 # cleos push action eosio activate '["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]' -p eosio
 
-# put the background nodeos job to foreground for docker run
-fg %1
+# Keep the container alive for as long as nodeos lives.
+# NOTE: do not use `fg` or `wait` here. With job control enabled (set -m) both
+# return as soon as the job merely *stops*, so SIGSTOP-ing nodeos (as snapshot
+# creation does to quiesce the data dir) would let this script run to completion
+# and kill the container. `kill -0` still succeeds for a stopped process, so
+# this loop holds through a pause and exits only once nodeos is really gone.
+while kill -0 "$nodeos_pid" 2>/dev/null; do
+  sleep 5s
+done

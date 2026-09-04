@@ -93,7 +93,7 @@ export const imageExists = async () => {
  * @author Kevin Brown <github.com/thekevinbrown>
  */
 
-export const startContainer = async () => {
+export const startContainer = async (skipInit: boolean = false) => {
 	try {
 		await docker.command(`network create -d bridge lamington`);
 	} catch (error) {
@@ -107,14 +107,40 @@ export const startContainer = async () => {
 		// console.log(`error: ${JSON.stringify(e.stderr, null, 2)}`);
 	}
 
-	await docker.command(
-		`run
+	if (skipInit) {
+		// Start container in empty state for snapshot restoration
+		console.log('Starting container in empty state for snapshot restoration');
+		await docker.command(
+			`run
 				--rm
-				--name lamington
+				--name ${ConfigManager.containerName}
 				-d
-				-p 8888:8888
-				-p 8080:8080
-				-p 9876:9876
+				-p ${ConfigManager.rpcPort}:8888
+				-p ${ConfigManager.stateHistoryPort}:8080
+				-p ${ConfigManager.p2pPort}:9876
+				--network=lamington
+				--platform linux/amd64
+				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
+				--mount type=bind,src="${__dirname}/../../scripts",dst=/opt/eosio/bin/scripts
+				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
+				--mount type=bind,src="${CONTRACTS_DIRECTORY}",dst=/usr/opt/eosio.contracts/build/contracts
+				-w "/opt/eosio/bin/"
+				${await dockerImageName()}
+				sleep infinity`
+				.replace(/\n/gm, '')
+				.replace(/\t/gm, ' ')
+		);
+	} else {
+		// Start container with normal initialization
+		console.log('Starting container with normal initialization');
+		await docker.command(
+			`run
+				--rm
+				--name ${ConfigManager.containerName}
+				-d
+				-p ${ConfigManager.rpcPort}:8888
+				-p ${ConfigManager.stateHistoryPort}:8080
+				-p ${ConfigManager.p2pPort}:9876
 				--network=lamington
 				--platform linux/amd64
 				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
@@ -126,9 +152,25 @@ export const startContainer = async () => {
 				/bin/bash -c "./scripts/${
 					ConfigManager.skipSystemContracts ? 'init_blockchain_wo_system.sh' : 'init_blockchain.sh'
 				}"`
-			.replace(/\n/gm, '')
-			.replace(/\t/gm, ' ')
-	);
+				.replace(/\n/gm, '')
+				.replace(/\t/gm, ' ')
+		);
+	}
+};
+
+export const resumeBlockchainInContainer = async () => {
+	console.log('Resuming blockchain process in container');
+	try {
+		// Resume against the restored data directory. This deliberately does NOT
+		// run init_blockchain.sh: that script clears /mnt/dev/data and re-runs the
+		// whole chain setup, which would discard the snapshot we just restored.
+		await docker.command(
+			`exec ${ConfigManager.containerName} /bin/bash -c "./scripts/resume_blockchain.sh&"`
+		);
+	} catch (error) {
+		console.error('Failed to resume blockchain in container:', error);
+		throw error;
+	}
 };
 /**
  * Stops the current Lamington container
@@ -141,7 +183,7 @@ export const stopContainer = async () => {
 	spinner.create('Stopping EOS Docker Container');
 
 	try {
-		await docker.command('kill lamington');
+		await docker.command(`kill ${ConfigManager.containerName}`);
 		spinner.end('Stopped EOS Docker Container');
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -182,7 +224,7 @@ export const compile = async ({
 	await docker
 		.command(
 			// Arg 1 is filename, arg 2 is contract name.
-			`exec lamington /opt/eosio/bin/scripts/compile_contract.sh "/${path.join(
+			`exec ${ConfigManager.containerName} /opt/eosio/bin/scripts/compile_contract.sh "/${path.join(
 				'opt',
 				'eosio',
 				'bin',

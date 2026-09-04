@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as mkdirp from 'mkdirp';
 import { exists, glob, rimraf, writeFile, readFile, WORKING_DIRECTORY } from './cli-utils';
 import { ConfigManager } from '../../configManager';
+import { sleep } from '../../utils';
 import { docker } from './dockerImageManagement';
 import axios from 'axios';
 import * as spinner from './logIndicator';
@@ -13,13 +14,22 @@ const SNAPSHOT_DIRECTORY = path.join('.lamington', 'snapshots');
 /** @hidden Maximum snapshot retention */
 const MAX_SNAPSHOT_RETENTION = 5;
 
+/** @hidden Number of one second polls to await full system contract initialization */
+const SYSTEM_CONTRACT_POLL_ATTEMPTS = 30;
+
+/** @hidden Filename used for the snapshot taken after a full initialization */
+const POST_INITIALIZATION_SNAPSHOT_NAME = 'post-full-initialization-snapshot.tar.gz';
+
 /** @hidden Snapshot metadata structure */
 export interface SnapshotMetadata {
-    timestamp: string;
-    eosVersion: string;
-    contractsVersion: string;
-    blockHeight: number;
-    systemContractsInstalled: boolean;
+	timestamp: string;
+	eosVersion: string;
+	contractsVersion: string;
+	blockHeight: number;
+	systemContractsInstalled: boolean;
+	systemContractHash?: string;
+	rammarketInitialized?: boolean;
+	initializationComplete?: boolean;
 }
 
 /**
@@ -45,21 +55,44 @@ const generateSnapshotFilename = async (): Promise<string> => {
 };
 
 /**
- * Checks if system contracts are installed
- * @returns True if system contracts are installed
+ * Checks if system contracts are installed and initialized
+ * @returns True if system contracts are installed and initialized
  */
 export const areSystemContractsInstalled = async (): Promise<boolean> => {
 	try {
 		// Check if eosio.system contract is installed and has expected tables
-		const result = await axios.post('http://localhost:8888/v1/chain/get_code', {
+		const result = await axios.post(`${ConfigManager.rpcEndpoint}/v1/chain/get_code`, {
 			account_name: 'eosio',
 			code_as_wasm: 1,
 		});
 
 		// Check for system contract hash (not the default bios hash)
-		return (
-			result.data.code_hash !== 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14'
-		);
+		const hasSystemContract =
+			result.data.code_hash !== 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14';
+
+		if (!hasSystemContract) {
+			return false;
+		}
+
+		// Additional check: verify that system contract tables are initialized
+		try {
+			const rammarketResult = await axios.post(`${ConfigManager.rpcEndpoint}/v1/chain/get_table_rows`, {
+				json: true,
+				code: 'eosio',
+				scope: 'eosio',
+				table: 'rammarket',
+				limit: 1,
+			});
+
+			// Check if rammarket table has expected data (indicating proper initialization)
+			const hasRammarketData =
+				rammarketResult.data && rammarketResult.data.rows && rammarketResult.data.rows.length > 0;
+
+			return hasRammarketData;
+		} catch (tableError) {
+			console.log('System contract tables not fully initialized yet');
+			return false;
+		}
 	} catch (error) {
 		return false;
 	}
@@ -70,7 +103,7 @@ export const areSystemContractsInstalled = async (): Promise<boolean> => {
  * @returns Blockchain information
  */
 const getBlockchainInfo = async (): Promise<any> => {
-	const response = await axios.post('http://localhost:8888/v1/chain/get_info', {});
+	const response = await axios.post(`${ConfigManager.rpcEndpoint}/v1/chain/get_info`, {});
 	return response.data;
 };
 
@@ -87,7 +120,10 @@ export const isSnapshotCompatible = (metadata: SnapshotMetadata): boolean => {
 	const eosVersionMatch = metadata.eosVersion.split('.')[0] === currentEosVersion.split('.')[0];
 	const contractsVersionMatch = metadata.contractsVersion === currentContractsVersion;
 
-	return eosVersionMatch && contractsVersionMatch && metadata.systemContractsInstalled;
+	// Check if snapshot has complete initialization (prefer fully initialized snapshots)
+	const hasCompleteInitialization = metadata.initializationComplete === true;
+
+	return eosVersionMatch && contractsVersionMatch && hasCompleteInitialization;
 };
 
 /**
@@ -95,15 +131,47 @@ export const isSnapshotCompatible = (metadata: SnapshotMetadata): boolean => {
  * @returns Container ID or null
  */
 const getContainerId = async (): Promise<string | null> => {
-	try {
-		const result = await docker.command('ps --filter name=lamington --format {{.ID}}');
-		if (result.containerList && result.containerList.length > 0) {
-			return result.containerList[0].id;
+    try {
+			console.log('Debug: Attempting to get container ID...');
+
+			// Try the format approach first
+			// Anchor the filter: `--filter name=` is a substring match, so an unanchored
+			// name matches unrelated containers and returns several ids at once
+			const result = await docker.command(
+				`ps --filter name=^${ConfigManager.containerName}$ --format {{.ID}}`
+			);
+			console.log('Debug: Docker ps result:', JSON.stringify(result, null, 2));
+
+			// Fix: Parse from raw output instead of containerList
+			if (result.raw && result.raw.trim()) {
+				const containerId = result.raw.trim();
+				console.log('Debug: Found container ID in raw:', containerId);
+				return containerId;
+			}
+
+			// Try alternative approach if format didn't work
+			const inspectResult = await docker.command(
+				`ps --filter name=^${ConfigManager.containerName}$`
+			);
+			console.log('Debug: Alternative ps result:', JSON.stringify(inspectResult, null, 2));
+
+			// Parse from alternative format
+			if (inspectResult.raw) {
+				const lines = inspectResult.raw.split('\n');
+				if (lines.length > 1) {
+					const containerId = lines[1].trim().split(' ')[0];
+					if (containerId) {
+						console.log('Debug: Found container ID in alternative format:', containerId);
+						return containerId;
+					}
+				}
+			}
+
+			return null;
+		} catch (error) {
+			console.error('Debug: Error getting container ID:', error);
+			return null;
 		}
-		return null;
-	} catch (error) {
-		return null;
-	}
 };
 
 /**
@@ -111,30 +179,115 @@ const getContainerId = async (): Promise<string | null> => {
  * @param backupPath Path to save backup
  * @returns True if backup successful
  */
+/**
+ * Creates a backup of the docker volume containing blockchain data
+ * @param backupPath Path to save backup
+ * @returns True if backup successful
+ */
 const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
 	try {
-		// Get the container ID
-		const containerId = await getContainerId();
-		if (!containerId) {
-			throw new Error('No running container found');
+				console.log('Debug: Starting docker volume backup with file exclusion...');
+
+				// Get the container ID
+				const containerId = await getContainerId();
+
+				if (!containerId) {
+					throw new Error('No running container found');
+				}
+
+				console.log('Debug: Using container ID:', containerId);
+
+				// Try to pause the blockchain process to avoid file changes during backup
+				try {
+					console.log('Debug: Attempting to pause blockchain...');
+					await docker.command(`exec ${containerId} pkill -STOP nodeos`);
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+				} catch (pauseError) {
+					console.log(
+						'Debug: Could not pause blockchain, continuing anyway:',
+						(pauseError as Error).message
+					);
+				}
+
+				try {
+					// Create backup using docker exec and tar with file exclusion
+					console.log('Debug: Creating backup archive with file exclusion...');
+
+					// Use tar with ignore errors and exclude volatile files that cause issues
+					// NOTE: every option must come BEFORE the `-C`/member arguments. tar
+					// applies --exclude positionally, so options listed after `data` are
+					// silently ignored and nothing is excluded at all.
+					//
+					// `state` and `blocks/reversible` are memory mapped databases that are
+					// captured mid-write while nodeos is paused, so nodeos rejects them with
+					// a dirty flag. `state-history` is an append only index which the replay
+					// rewrites, and shipping it makes nodeos die with a fatal
+					// state_history_write_exception. All three are rebuilt from blocks.log,
+					// so leave them out: only blocks.log/blocks.index need to be captured,
+					// the archive stays small, and the restore replays cleanly.
+					const tarCommand =
+						`exec ${containerId} tar czf /backup.tar.gz ` +
+						`--ignore-failed-read ` +
+						`--warning=no-file-changed ` +
+						`--exclude=data/state ` +
+						`--exclude=data/blocks/reversible ` +
+						`--exclude=data/state-history ` +
+						`-C /mnt/dev data`;
+
+					console.log('Debug: Running tar command with exclusions...');
+					await docker.command(tarCommand);
+
+					// Copy backup from container to host
+					console.log('Debug: Copying backup to host...');
+					await docker.command(`cp ${containerId}:/backup.tar.gz ${backupPath}`);
+
+					// Clean up backup file from container
+					console.log('Debug: Cleaning up backup file...');
+					await docker.command(`exec ${containerId} rm /backup.tar.gz`);
+
+					console.log('Debug: Backup completed successfully');
+					return true;
+				} catch (backupError) {
+					console.error(
+						'Debug: Primary backup method failed, trying fallback:',
+						(backupError as Error).message
+					);
+
+					// Fallback: Try copying individual directories instead of full tar
+					try {
+						console.log('Debug: Attempting fallback backup method...');
+
+						// Create a temporary directory structure
+						await docker.command(`exec ${containerId} mkdir -p /backup_data`);
+
+						// Copy blocks only: state and reversible are rebuilt on replay
+						await docker.command(`exec ${containerId} cp -r /mnt/dev/data/blocks /backup_data/`);
+						await docker.command(`exec ${containerId} rm -rf /backup_data/blocks/reversible`);
+
+						// Create tar of the copied data
+						await docker.command(`exec ${containerId} tar czf /backup.tar.gz -C /backup_data .`);
+						await docker.command(`cp ${containerId}:/backup.tar.gz ${backupPath}`);
+						await docker.command(`exec ${containerId} rm -rf /backup_data /backup.tar.gz`);
+
+						console.log('Debug: Fallback backup method succeeded');
+						return true;
+					} catch (fallbackError) {
+						console.error('Debug: Fallback backup also failed:', (fallbackError as Error).message);
+						return false;
+					}
+				}
+			} finally {
+		// Resume the blockchain process
+		try {
+			console.log('Debug: Resuming blockchain...');
+			const containerId = await getContainerId();
+			if (containerId) {
+				await docker.command(`exec ${containerId} pkill -CONT nodeos`);
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			}
+		} catch (resumeError) {
+			console.log('Debug: Could not resume blockchain:', (resumeError as Error).message);
 		}
-
-		// Create a temporary container to perform backup
-		const tempContainerName = `lamington-snapshot-${Date.now()}`;
-
-		// Create backup using docker exec and tar
-		await docker.command(`exec ${containerId} tar czf /backup.tar.gz -C /mnt/dev data`);
-
-		// Copy backup from container to host
-		await docker.command(`cp ${containerId}:/backup.tar.gz ${backupPath}`);
-
-		// Clean up backup file from container
-		await docker.command(`exec ${containerId} rm /backup.tar.gz`);
-
-		return true;
-	} catch (error) {
-		console.error('Docker volume backup failed:', error);
-		return false;
 	}
 };
 
@@ -145,22 +298,76 @@ const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
  */
 const dockerVolumeRestore = async (backupPath: string): Promise<boolean> => {
 	try {
-		// Start a new container with the backup data
-		const tempContainerName = `lamington-restore-${Date.now()}`;
+		console.log('Debug: Starting docker volume restore...');
 
-		// Create a temporary container
-		await docker.command(`create --name ${tempContainerName} alpine`);
+		// Get the current container ID
+		const containerId = await getContainerId();
 
-		// Copy backup into temporary container
-		await docker.command(`cp ${backupPath} ${tempContainerName}:/backup.tar.gz`);
+		if (!containerId) {
+			throw new Error('No running container found for restoration');
+		}
 
-		// Extract backup to get the data
-		await docker.command(`exec ${tempContainerName} tar xzf /backup.tar.gz`);
+		console.log('Debug: Using container ID for restore:', containerId);
 
-		// Clean up
-		await docker.command(`rm ${tempContainerName}`);
+		// Check if nodeos process exists before trying to pause it
+		console.log('Debug: Checking if nodeos process exists...');
+		try {
+			const checkProcessResult = await docker.command(`exec ${containerId} pgrep nodeos`);
+			const hasNodeosProcess = checkProcessResult.raw && checkProcessResult.raw.trim();
 
-		return true;
+			if (hasNodeosProcess) {
+				console.log('Debug: nodeos process found, pausing for restoration...');
+				// Pause the blockchain process during restoration
+				await docker.command(`exec ${containerId} pkill -STOP nodeos`);
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			} else {
+				console.log('Debug: No nodeos process found, proceeding without pause');
+			}
+		} catch (checkError) {
+			console.log(
+				'Debug: Error checking for nodeos process, assuming it does not exist:',
+				checkError instanceof Error ? checkError.message : String(checkError)
+			);
+			// Continue without pausing if we can't check
+		}
+
+		try {
+			// Copy backup into the running container
+			console.log('Debug: Copying backup to container...');
+			await docker.command(`cp ${backupPath} ${containerId}:/restore.tar.gz`);
+
+			// Remove old data and extract new data
+			console.log('Debug: Extracting restored data...');
+			await docker.command(`exec ${containerId} rm -rf /mnt/dev/data`);
+			await docker.command(`exec ${containerId} mkdir -p /mnt/dev/data`);
+			await docker.command(`exec ${containerId} tar xzf /restore.tar.gz -C /mnt/dev`);
+
+			// Clean up backup file
+			console.log('Debug: Cleaning up restore files...');
+			await docker.command(`exec ${containerId} rm /restore.tar.gz`);
+
+			console.log('Debug: Restoration completed successfully');
+			return true;
+		} finally {
+			// Only resume if we actually paused
+			try {
+				const checkProcessResult = await docker.command(`exec ${containerId} pgrep nodeos`);
+				const hasNodeosProcess = checkProcessResult.raw && checkProcessResult.raw.trim();
+
+				if (hasNodeosProcess) {
+					console.log('Debug: Resuming blockchain after restoration...');
+					await docker.command(`exec ${containerId} pkill -CONT nodeos`);
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+				} else {
+					console.log('Debug: No nodeos process to resume');
+				}
+			} catch (checkError) {
+				console.log(
+					'Debug: Error checking for nodeos process during resume:',
+					checkError instanceof Error ? checkError.message : String(checkError)
+				);
+			}
+		}
 	} catch (error) {
 		console.error('Docker volume restore failed:', error);
 		return false;
@@ -176,39 +383,77 @@ export const createSnapshot = async (snapshotName?: string): Promise<string> => 
 	spinner.create('Creating blockchain snapshot');
 
 	try {
-		// Ensure snapshot directory exists
-		const snapshotDir = await ensureSnapshotDirectory();
+				// Ensure snapshot directory exists
+				const snapshotDir = await ensureSnapshotDirectory();
 
-		// Generate filename if not provided
-		const filename = snapshotName || (await generateSnapshotFilename());
-		const snapshotPath = path.join(snapshotDir, filename);
+				// Generate filename if not provided
+				const filename = snapshotName || (await generateSnapshotFilename());
+				const snapshotPath = path.join(snapshotDir, filename);
 
-		// Get current blockchain info for metadata
-		const blockchainInfo = await getBlockchainInfo();
+				// Get current blockchain info for metadata
+				const blockchainInfo = await getBlockchainInfo();
 
-		// Create metadata
-		const metadata: SnapshotMetadata = {
-			timestamp: new Date().toISOString(),
-			eosVersion: versionFromUrl(ConfigManager.eos),
-			contractsVersion: ConfigManager.contracts,
-			blockHeight: blockchainInfo.head_block_num,
-			systemContractsInstalled: await areSystemContractsInstalled(),
-		};
+				// Create metadata with enhanced system contract information
+				const systemContractsInstalled = await areSystemContractsInstalled();
 
-		// Create snapshot using docker volume backup
-		const snapshotSuccess = await dockerVolumeBackup(snapshotPath);
+				// Get system contract hash for metadata
+				let systemContractHash = '';
+				let rammarketInitialized = false;
 
-		if (!snapshotSuccess) {
-			throw new Error('Failed to create docker volume backup');
-		}
+				try {
+					const codeResult = await axios.post(`${ConfigManager.rpcEndpoint}/v1/chain/get_code`, {
+						account_name: 'eosio',
+						code_as_wasm: 1,
+					});
+					systemContractHash = codeResult.data.code_hash;
+				} catch (error) {
+					console.log('Could not get system contract hash for metadata');
+				}
 
-		// Save metadata
-		const metadataPath = `${snapshotPath}.metadata.json`;
-		await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+				try {
+					const rammarketResult = await axios.post(
+						`${ConfigManager.rpcEndpoint}/v1/chain/get_table_rows`,
+						{
+							json: true,
+							code: 'eosio',
+							scope: 'eosio',
+							table: 'rammarket',
+							limit: 1,
+						}
+					);
+					rammarketInitialized =
+						rammarketResult.data &&
+						rammarketResult.data.rows &&
+						rammarketResult.data.rows.length > 0;
+				} catch (error) {
+					console.log('Could not verify rammarket table for metadata');
+				}
 
-		spinner.end(`Snapshot created: ${filename}`);
-		return snapshotPath;
-	} catch (error) {
+				const metadata: SnapshotMetadata = {
+					timestamp: new Date().toISOString(),
+					eosVersion: versionFromUrl(ConfigManager.eos),
+					contractsVersion: ConfigManager.contracts,
+					blockHeight: blockchainInfo.head_block_num,
+					systemContractsInstalled: systemContractsInstalled,
+					systemContractHash: systemContractHash,
+					rammarketInitialized: rammarketInitialized,
+					initializationComplete: systemContractsInstalled && rammarketInitialized,
+				};
+
+				// Create snapshot using docker volume backup
+				const snapshotSuccess = await dockerVolumeBackup(snapshotPath);
+
+				if (!snapshotSuccess) {
+					throw new Error('Failed to create docker volume backup');
+				}
+
+				// Save metadata
+				const metadataPath = `${snapshotPath}.metadata.json`;
+				await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+
+				spinner.end(`Snapshot created: ${filename}`);
+				return snapshotPath;
+			} catch (error) {
 		spinner.fail('Failed to create snapshot');
 		console.error(`Snapshot creation error: ${error}`);
 		throw error;
@@ -287,7 +532,7 @@ export const listSnapshots = async (): Promise<
  * @param snapshotName Name of snapshot to delete
  * @returns True if deletion successful
  */
-const deleteSnapshot = async (snapshotName: string): Promise<boolean> => {
+export const deleteSnapshot = async (snapshotName: string): Promise<boolean> => {
 	try {
 		const snapshotDir = await ensureSnapshotDirectory();
 		const snapshotPath = path.join(snapshotDir, snapshotName);
@@ -330,4 +575,95 @@ const cleanupSnapshots = async (maxRetention: number = MAX_SNAPSHOT_RETENTION): 
 	}
 
 	return deletedCount;
+};
+
+/**
+ * Deletes all existing snapshots
+ * @returns Number of snapshots deleted
+ */
+export const deleteAllSnapshots = async (): Promise<number> => {
+	const snapshots = await listSnapshots();
+	let deletedCount = 0;
+
+	for (const snapshot of snapshots) {
+		if (await deleteSnapshot(snapshot.name)) {
+			deletedCount++;
+		}
+	}
+
+	return deletedCount;
+};
+/**
+ * Finds the newest snapshot compatible with the current configuration
+ * @returns Compatible snapshot, or null when none exist
+ */
+export const findCompatibleSnapshot = async (): Promise<{
+	name: string;
+	metadata: SnapshotMetadata;
+} | null> => {
+	const snapshots = await listSnapshots();
+
+	return snapshots.find((snapshot) => isSnapshotCompatible(snapshot.metadata)) || null;
+};
+
+/**
+ * Polls until the system contracts report as fully initialized
+ * @param maxAttempts Maximum number of one second polls
+ * @returns True once the system contracts are initialized, false on timeout
+ */
+export const waitForSystemContracts = async (
+	maxAttempts: number = SYSTEM_CONTRACT_POLL_ATTEMPTS
+): Promise<boolean> => {
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			if (await areSystemContractsInstalled()) {
+				console.log(`System contracts fully initialized after ${attempt} attempt(s)`);
+				return true;
+			}
+
+			console.log(`System contracts not fully initialized yet, attempt ${attempt}/${maxAttempts}`);
+		} catch (error) {
+			console.log(`Error checking system contract initialization: ${(error as Error).message}`);
+		}
+
+		await sleep(1000);
+	}
+
+	return false;
+};
+
+/**
+ * Creates a snapshot of the fully initialized blockchain, unless a compatible
+ * snapshot already exists. Never throws; snapshots are an optimisation, so a
+ * failure here must not fail the caller.
+ * @returns Path to the created snapshot, or null when none was created
+ */
+export const createSnapshotIfNeeded = async (): Promise<string | null> => {
+	try {
+		const compatibleSnapshot = await findCompatibleSnapshot();
+
+		if (compatibleSnapshot) {
+			console.log('Compatible snapshot already exists, skipping snapshot creation');
+			return null;
+		}
+
+		console.log('No compatible snapshot found, waiting for full initialization before snapshot');
+
+		if (!(await waitForSystemContracts())) {
+			console.log('System contracts never fully initialized, skipping snapshot creation');
+			return null;
+		}
+
+		// Replace any existing snapshots, which are by definition incompatible
+		const deletedCount = await deleteAllSnapshots();
+		console.log(`Deleted ${deletedCount} old snapshot(s)`);
+
+		const snapshotPath = await createSnapshot(POST_INITIALIZATION_SNAPSHOT_NAME);
+		console.log(`Snapshot created successfully: ${snapshotPath}`);
+
+		return snapshotPath;
+	} catch (error) {
+		console.log(`Failed to create snapshot: ${(error as Error).message}`);
+		return null;
+	}
 };

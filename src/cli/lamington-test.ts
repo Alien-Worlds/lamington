@@ -6,6 +6,7 @@ import { buildAll } from './cli-utils/contactBuilding';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { ConfigManager } from '../configManager';
 import { sleep } from '../utils';
+import { createSnapshotIfNeeded } from './cli-utils/blockchainSnapshotManagement';
 const { Command } = require('commander');
 const program = new Command();
 
@@ -42,6 +43,7 @@ console.log(
 const run = async (options: { grep?: string | undefined } | undefined) => {
 	// Initialize the configuration
 	await ConfigManager.initWithDefaults();
+
 	// Propagate CLI defines to runtime so ContractDeployer can pick correct artifacts
 	ConfigManager.setActiveDefines(program.defines);
 
@@ -52,16 +54,22 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 
 	// Start an EOSIO instance if not running
 	if (!(await eosIsReady())) {
-		await startEos();
+		await startEos(true); // Enable snapshots
 	}
+
 	// Start compiling smart contracts
 	if (!program.skipBuild) {
 		await buildAll(false, [program.path], program.contracts, program.defines, program.force);
 	} else {
 		await sleep(500);
 	}
+
+	// Snapshot the fully initialized chain so later runs can skip initialization
+	await createSnapshotIfNeeded();
+
 	// Begin running tests
 	await runTests(options);
+
 	// Stop EOSIO instance if keepAlive is false
 	if (!ConfigManager.keepAlive) {
 		await stopContainer();
@@ -72,7 +80,12 @@ run(program).catch(async (error) => {
 	process.exitCode = 1;
 	console.log(error);
 
-	if (!ConfigManager.keepAlive && (await eosIsReady())) {
-		await stopContainer();
+	// Never let a cleanup failure mask the error that caused it
+	try {
+		if (!ConfigManager.keepAlive && (await eosIsReady())) {
+			await stopContainer();
+		}
+	} catch (cleanupError) {
+		console.log('Failed to clean up the EOS container:', cleanupError);
 	}
 });

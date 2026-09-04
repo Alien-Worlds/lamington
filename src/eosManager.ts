@@ -25,12 +25,12 @@ export class EOSManager {
 	static signatureProvider: JsSignatureProvider;
 	/** Configured EOSjs client */
 	static api: Api;
-	/** RPC connection with the local EOSIO node at `http://127.0.0.1:8888` */
+	/** RPC connection with the local EOSIO node, on the configured `rpcPort` */
 	static rpc: JsonRpc;
 
 	/**
-	 * Initializes a default connection to the local EOSIO node on port `8888` and
-	 * assigns the default `eosio` account with administration keys
+	 * Initializes a default connection to the local EOSIO node on the configured
+	 * `rpcPort` and assigns the default `eosio` account with administration keys
 	 * @author Kevin Brown <github.com/thekevinbrown>
 	 */
 	static initWithDefaults = () => {
@@ -42,7 +42,7 @@ export class EOSManager {
 			'5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3'
 		);
 
-		EOSManager.init({ httpEndpoint: 'http://127.0.0.1:8888', adminAccount });
+		EOSManager.init({ httpEndpoint: ConfigManager.rpcEndpoint, adminAccount });
 	};
 	/**
 	 * Initializes a connection to any EOSIO node and sets the administration keys which
