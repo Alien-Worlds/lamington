@@ -18,6 +18,25 @@ ergonomics come after.
 
 ---
 
+## Issue index
+
+| Item | Issue | Priority |
+|---|---|---|
+| Build cache ignores headers | #32 | P0 |
+| Staleness compares millisecond component | #33 | P0 |
+| Empty run exits 0 | #34 | P0 |
+| `--skip-build` cannot detect a stale binary | #35 | P0 |
+| Fixture failure cascades | #36 | P1 |
+| Deploys on the chain CPU ceiling, no retry | #37 | P1 |
+| Reporter and bail not overridable per run | #38 | P1 |
+| No machine-readable results | #39 | P1 |
+| Contracts build serially | #40 | P1 |
+| One broken contract blocks all tests | #41 | P1 |
+| Docker network lifecycle | #42 | P1 |
+| Ergonomics backlog | #43 | P2 |
+
+---
+
 ## P0 — Silent false results
 
 ### P0-1. A changed header does not trigger recompilation
