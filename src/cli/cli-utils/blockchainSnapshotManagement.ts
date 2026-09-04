@@ -6,7 +6,9 @@ import { sleep } from '../../utils';
 import { docker } from './dockerImageManagement';
 import axios from 'axios';
 import * as spinner from './logIndicator';
-import { versionFromUrl } from './dockerImageManagement';
+import { versionFromUrl, CONFIG_DIRECTORY } from './dockerImageManagement';
+import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 /** @hidden Snapshot directory path */
 const SNAPSHOT_DIRECTORY = path.join('.lamington', 'snapshots');
@@ -24,6 +26,7 @@ export interface SnapshotMetadata {
 	blockHeight: number;
 	systemContractsInstalled: boolean;
 	systemContractHash?: string;
+	genesisHash?: string;
 	rammarketInitialized?: boolean;
 	initializationComplete?: boolean;
 }
@@ -48,6 +51,22 @@ const generateSnapshotFilename = async (): Promise<string> => {
 	const contractsVersion = ConfigManager.contracts;
 
 	return `snapshot-${timestamp}-eos-${eosVersion}-contracts-${contractsVersion}.tar.gz`;
+};
+
+/**
+ * Hashes the genesis file the chain is started from. The chain id is derived
+ * from genesis, so a snapshot taken under a different genesis belongs to a
+ * different chain and must not be restored over this one.
+ * @returns Hex sha256 of genesis.json, or empty string when it cannot be read
+ */
+const getGenesisHash = (): string => {
+	try {
+		const genesis = fs.readFileSync(path.join(CONFIG_DIRECTORY, 'genesis.json'));
+		return crypto.createHash('sha256').update(genesis).digest('hex');
+	} catch (error) {
+		console.log('Could not read genesis.json to hash it');
+		return '';
+	}
 };
 
 /**
@@ -119,7 +138,11 @@ export const isSnapshotCompatible = (metadata: SnapshotMetadata): boolean => {
 	// Check if snapshot has complete initialization (prefer fully initialized snapshots)
 	const hasCompleteInitialization = metadata.initializationComplete === true;
 
-	return eosVersionMatch && contractsVersionMatch && hasCompleteInitialization;
+	// A snapshot taken under a different genesis is a different chain. Snapshots
+	// written before this was recorded have no hash and cannot be trusted.
+	const genesisMatch = !!metadata.genesisHash && metadata.genesisHash === getGenesisHash();
+
+	return eosVersionMatch && contractsVersionMatch && hasCompleteInitialization && genesisMatch;
 };
 
 /**
@@ -432,6 +455,7 @@ export const createSnapshot = async (snapshotName?: string): Promise<string> => 
 					blockHeight: blockchainInfo.head_block_num,
 					systemContractsInstalled: systemContractsInstalled,
 					systemContractHash: systemContractHash,
+					genesisHash: getGenesisHash(),
 					rammarketInitialized: rammarketInitialized,
 					initializationComplete: systemContractsInstalled && rammarketInitialized,
 				};

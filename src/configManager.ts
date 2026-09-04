@@ -1,4 +1,3 @@
-import axios from 'axios';
 import * as path from 'path';
 import * as mkdirp from 'mkdirp';
 import * as Mocha from 'mocha';
@@ -154,9 +153,6 @@ export class ConfigManager {
 	 * @author Mitch Pierias <github.com/MitchPierias>
 	 */
 	public static async initWithDefaults() {
-		// DEFAULT_CONFIG.cdt = await ConfigManager.getAssetURL('EOSIO', 'eosio.cdt', 'amd64.deb');
-		// DEFAULT_CONFIG.eos = await ConfigManager.getAssetURL('EOSIO', 'eos', 'ubuntu-18.04');
-
 		if (!(await ConfigManager.configExists())) {
 			console.log('Project has not yet been initialized.');
 			console.log('Please run lamington init before running this command.');
@@ -165,38 +161,6 @@ export class ConfigManager {
 		}
 
 		await ConfigManager.loadConfigFromDisk();
-	}
-
-	/**
-	 * Downloads the organization's latest repository release image and
-	 * returns the assets matching the specified filter
-	 * @author Kevin Brown <github.com/thekevinbrown>
-	 * @param organization Asset's case-sensitive repository organization
-	 * @param repository Asset's case-sensitive repository name
-	 * @param filter Resource filter
-	 * @hidden
-	 */
-	private static async getAssetURL(organization: string, repository: string, filter: string) {
-		// Get the projects latest GitHub repository release
-		const result = await axios.get(
-			`https://api.github.com/repos/${organization}/${repository}/releases/latest`
-		);
-		// Handle failed GitHub request
-		if (!result.data || !result.data.assets || !Array.isArray(result.data.assets)) {
-			console.error(result);
-			throw new Error('Unexpected response from GitHub API. Please try again later.');
-		}
-		// Capture the GitHub url from response
-		const asset = result.data.assets.find((asset: any) =>
-			asset.browser_download_url.includes(filter)
-		);
-		// Handle no assets found
-		if (!asset)
-			throw new Error(
-				`Could not locate asset with ${filter} in the download URL in the ${organization}/${repository} repository`
-			);
-		// Return captured download url
-		return asset.browser_download_url as string;
 	}
 
 	public static async isValidConfig(config: object) {
