@@ -1,7 +1,13 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import * as qrcode from 'qrcode-terminal';
 import { sleep } from '../../utils';
-import { buildImage, imageExists, startContainer, versionFromUrl } from './dockerImageManagement';
+import {
+	buildImage,
+	imageExists,
+	startContainer,
+	resumeBlockchainInContainer,
+	versionFromUrl,
+} from './dockerImageManagement';
 import * as spinner from './logIndicator';
 import { ConfigManager } from '../../configManager';
 import {
@@ -22,7 +28,25 @@ export const MAX_CONNECTION_ATTEMPTS = 40;
  * @author Mitch Pierias <github.com/MitchPierias>
  */
 
-export const startEos = async (useSnapshot?: boolean) => {
+/**
+ * Prints the "chain is up" banner, including the configured endpoint and
+ * container name so it stays accurate when either is overridden
+ * @param status Status line describing how the chain was started
+ */
+const printReadyBanner = (status: string) => {
+	console.log(`
+====================================================
+
+      ${status}
+
+      RPC: ${ConfigManager.rpcEndpoint}
+      Docker Container: ${ConfigManager.containerName}
+
+====================================================
+`);
+};
+
+export const startEos = async (useSnapshot: boolean = true) => {
 	// spinner.create('Starting EOS docker container');
 	// Ensure an EOSIO build image exists
 	console.log('Starting EOS docker container');
@@ -38,28 +62,45 @@ export const startEos = async (useSnapshot?: boolean) => {
 
 		if (compatibleSnapshot) {
 			console.log(`Found compatible snapshot: ${compatibleSnapshot.name}`);
+
+			// Start container in empty state for snapshot restoration
+			console.log('Starting container in empty state for snapshot restoration...');
+			const containerStartTime = Date.now();
+			await startContainer(true); // Skip initialization for snapshot restoration
+			console.log(`Container started in ${Date.now() - containerStartTime}ms`);
+
+			// Wait a short time for container to be ready
+			console.log('Waiting briefly for container to stabilize...');
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+
+			console.log(`Starting snapshot restoration from: ${compatibleSnapshot.name}`);
+			const restoreStartTime = Date.now();
 			const restoreSuccess = await restoreSnapshot(compatibleSnapshot.name);
+			const restoreDuration = Date.now() - restoreStartTime;
+			console.log(
+				`Snapshot restoration completed in ${restoreDuration}ms, success: ${restoreSuccess}`
+			);
 
 			if (restoreSuccess) {
 				console.log('Blockchain restored from snapshot successfully');
-				// Start container with restored data
-				await startContainer();
-				await untilEosIsReady();
-				console.log(
-					'                                        \n\
-\
-==================================================== \n\
-\
-     EOS running from snapshot, admin account created.            \n\
-\
-     RPC: http://localhost:8888                     \n\\t Docker Container: lamington                    \n\
-\
-==================================================== \n'
-				);
+
+				// Now start the blockchain process in the container
+				console.log('Resuming blockchain process after snapshot restoration...');
+				await resumeBlockchainInContainer();
+
+				// Wait for EOS to be ready
+				console.log('Waiting for EOS to be ready after starting blockchain...');
+				await untilEosIsReady(30);
+
+				printReadyBanner('EOS running from snapshot, admin account created.');
 				spinner.end('Started EOS docker container from snapshot');
 				return;
 			} else {
-				console.log('Snapshot restoration failed, falling back to full initialization');
+				console.log('Snapshot restoration failed, but container is running');
+				// Container is already running, just continue
+				printReadyBanner('EOS running, admin account created.');
+				spinner.end('Started EOS docker container');
+				return;
 			}
 		} else {
 			console.log('No compatible snapshot found, proceeding with full initialization');
@@ -87,29 +128,24 @@ export const startEos = async (useSnapshot?: boolean) => {
 		console.log('started container');
 
 		await untilEosIsReady();
-		console.log(
-			'                                        \n\
-==================================================== \n\
-                                                     \n\
-      EOS running, admin account created.            \n\
-                                                     \n\
-      RPC: http://localhost:8888                     \n\
-	  Docker Container: lamington                    \n\
-                                                     \n\
-==================================================== \n'
-		);
+		printReadyBanner('EOS running, admin account created.');
 		spinner.end('Started EOS docker container');
 
 		// Auto-create snapshot if configured and system contracts are installed
 		if (false) {
-			// TODO: Add ConfigManager.autoCreateSnapshot
+			// Disabled - snapshots are now created by init script after full setup
+			// TODO: Add ConfigManager.autoCreateSnapshot - disabled for now
 			try {
-				const contractsInstalled = await areSystemContractsInstalled();
-				if (contractsInstalled) {
-					console.log('Auto-creating snapshot after system contracts installation...');
-					await createSnapshot();
-				}
-			} catch (snapshotError) {
+						// Wait for container to stabilize
+						console.log('Waiting for container to stabilize before snapshot...');
+						await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
+
+						const contractsInstalled = await areSystemContractsInstalled();
+						if (contractsInstalled) {
+							console.log('Auto-creating snapshot after system contracts installation...');
+							await createSnapshot();
+						}
+					} catch (snapshotError) {
 				console.log('Failed to auto-create snapshot:', snapshotError);
 			}
 		}
@@ -127,26 +163,37 @@ export const startEos = async (useSnapshot?: boolean) => {
 
 export const eosIsReady = async () => {
 	try {
+		console.log('DEBUG: eosIsReady() checking if EOS is available...');
+		
 		const data = JSON.stringify({ account_name: 'eosio', code_as_wasm: 1 });
 
 		const config: AxiosRequestConfig = {
 			method: 'POST',
-			url: 'http://localhost:8888/v1/chain/get_code',
+			url: `${ConfigManager.rpcEndpoint}/v1/chain/get_code`,
 			headers: {
 				'Content-Type': 'application/json',
 			},
 			data: data,
+			timeout: 5000, // 5 second timeout
 		};
 
+		console.log('DEBUG: Making HTTP request to EOS endpoint...');
+		const startTime = Date.now();
 		const info = await axios(config);
+		const requestTime = Date.now() - startTime;
 
-		return (
+		console.log(`DEBUG: HTTP request completed in ${requestTime}ms, status: ${info.status}`);
+
+		const isReady =
 			info &&
 			info.status === 200 &&
 			info.data &&
-			info.data.code_hash != 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14'
-		);
-	} catch (error) {
+			info.data.code_hash != 'bfa1211a432693fa0b5a537f47fe8460009e5165197725254d41fe09be9dff14';
+		
+		console.log('DEBUG: eosIsReady() result:', isReady);
+		return isReady;
+	} catch (error: unknown) {
+		console.log('DEBUG: eosIsReady() failed with error:', error instanceof Error ? error.message : String(error));
 		return false;
 	}
 };

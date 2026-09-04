@@ -38,6 +38,14 @@ export interface LamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	/** Name of the docker container running the chain */
+	containerName?: string;
+	/** Host port mapped to the container's RPC port */
+	rpcPort?: number;
+	/** Host port mapped to the container's state history port */
+	stateHistoryPort?: number;
+	/** Host port mapped to the container's p2p port */
+	p2pPort?: number;
 	/** Optional additional search paths for compiled contracts as fallbacks */
 	compiledContractsSearchPaths?: string[];
 }
@@ -59,6 +67,10 @@ export interface DefaultLamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
+	containerName: string;
+	rpcPort: number;
+	stateHistoryPort: number;
+	p2pPort: number;
 	compiledContractsSearchPaths: string[];
 }
 
@@ -91,9 +103,9 @@ export namespace LamingtonDebugLevel {
  * values by specifying them in their `.lamingtonrc`
  */
 const DEFAULT_CONFIG: DefaultLamingtonConfig = {
-	eos: '',
-	cdt: '',
-	contracts: 'v1.8.0-rc1',
+	eos: 'https://github.com/AntelopeIO/leap/releases/download/v5.0.3/leap_5.0.3_amd64.deb',
+	cdt: 'https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb',
+	contracts: 'v1.9.2',
 	debug: LamingtonDebugLevel.NONE,
 	debugTransactions: false,
 	keepAlive: false,
@@ -108,6 +120,10 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	cppFlags: '',
 	benchmark: true,
 	compiledContractsSearchPaths: [],
+	containerName: 'lamington',
+	rpcPort: 8888,
+	stateHistoryPort: 8080,
+	p2pPort: 9876,
 };
 
 /**
@@ -192,11 +208,12 @@ export class ConfigManager {
 		}
 		// Create the config directory
 		await mkdirp(CACHE_DIRECTORY, {});
-		// Fetch the latest repository configuration
+		// Write the pinned toolchain from DEFAULT_CONFIG rather than resolving the
+		// latest GitHub release. The EOSIO org is archived and its newest release is
+		// not the version the system contracts in eosio-contracts/ require, so
+		// "latest" produces a chain that cannot install them.
 		const defaultConfig: LamingtonConfig = {
 			...DEFAULT_CONFIG,
-			cdt: await ConfigManager.getAssetURL('EOSIO', 'eosio.cdt', 'amd64.deb'),
-			eos: await ConfigManager.getAssetURL('EOSIO', 'eos', 'ubuntu-18.04'),
 		};
 		// Cache the configuration file to disk
 		await writeFile(atPath, JSON.stringify(defaultConfig, null, 4), ENCODING);
@@ -386,5 +403,47 @@ export class ConfigManager {
 			(ConfigManager.config && ConfigManager.config.compiledContractsSearchPaths) ||
 			DEFAULT_CONFIG.compiledContractsSearchPaths
 		);
+	}
+
+	/**
+	 * Returns the name of the docker container running the chain. Set this to run
+	 * more than one Lamington chain on the same machine.
+	 */
+	static get containerName(): string {
+		return (
+			(ConfigManager.config && ConfigManager.config.containerName) || DEFAULT_CONFIG.containerName
+		);
+	}
+
+	/**
+	 * Returns the host port mapped to the container's RPC port
+	 */
+	static get rpcPort(): number {
+		return (ConfigManager.config && ConfigManager.config.rpcPort) || DEFAULT_CONFIG.rpcPort;
+	}
+
+	/**
+	 * Returns the host port mapped to the container's state history port
+	 */
+	static get stateHistoryPort(): number {
+		return (
+			(ConfigManager.config && ConfigManager.config.stateHistoryPort) ||
+			DEFAULT_CONFIG.stateHistoryPort
+		);
+	}
+
+	/**
+	 * Returns the host port mapped to the container's p2p port
+	 */
+	static get p2pPort(): number {
+		return (ConfigManager.config && ConfigManager.config.p2pPort) || DEFAULT_CONFIG.p2pPort;
+	}
+
+	/**
+	 * Returns the host RPC endpoint for the chain. Single source of truth for
+	 * every host side caller, so a custom `rpcPort` is picked up everywhere.
+	 */
+	static get rpcEndpoint(): string {
+		return `http://localhost:${ConfigManager.rpcPort}`;
 	}
 }
