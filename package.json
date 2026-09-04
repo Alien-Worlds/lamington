@@ -1,6 +1,6 @@
 {
 	"name": "lamington",
-	"version": "1.3.0",
+	"version": "1.3.1",
 	"description": "A suite of tools to make building and testing EOS smart contracts easier. ",
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",
@@ -8,6 +8,7 @@
 		"build": "tsc && npm run copy:scripts && npm run copy:configs",
 		"changelog": "auto-changelog --commit-limit false",
 		"check:types": "tsc --noEmit",
+		"verify:package": "bash scripts/verify-package.sh",
 		"copy:scripts": "cp -r ./src/scripts/ ./lib/scripts/",
 		"copy:configs": "cp -R ./src/eosio-config/ ./lib/eosio-config/; cp -R ./eosio-contracts ./lib/eosio-contracts",
 		"clean": "rm -rf ./lib",
