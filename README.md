@@ -14,6 +14,7 @@ The Lamington library includes CLI tools and JavaScript utilities to streamline 
 - Skill level agnostic
 - TypeScript ready
 - Containerized development
+- Fast start-up by restoring blockchain snapshots
 - Common JavaScript testing frameworks
 - Multi-environment support
 - Simple CLI commands
@@ -99,6 +100,66 @@ $ lamington test
 
 For a full list of available JavaScript utilities, please [visit the documentation here](https://docs.lamington.io/testing).
 
+### Snapshots
+
+Initializing a chain from scratch installs the EOSIO system contracts, which is
+by far the slowest part of `lamington start` and `lamington test`. Lamington can
+snapshot a fully initialized chain and restore it on subsequent runs instead of
+repeating that work.
+
+This is automatic and needs no configuration:
+
+1. On the first run the chain initializes normally. Once the system contracts are
+   confirmed installed, a snapshot is written to `.lamington/snapshots/`.
+2. On later runs a compatible snapshot is restored instead of initializing.
+
+On the small test chain used to develop this, a full initialization took about 22
+seconds against about 6 seconds to restore. The saving grows with however much
+work your project's initialization does, because restore time stays roughly flat.
+
+#### What a snapshot contains
+
+Only the block log (`blocks.log` and `blocks.index`). The state database,
+reversible blocks and state history are deliberately excluded: they are memory
+mapped or append-only files that cannot be safely copied out of a running node,
+and nodeos rebuilds them by replaying the block log when the snapshot is
+restored. This keeps archives small, typically around 100KB.
+
+#### When a snapshot is ignored
+
+Each snapshot records the `eos` version, the `contracts` version and a hash of
+the `genesis.json` it was created under. If any of those differ from your current
+configuration the snapshot is ignored, the chain initializes from scratch, and a
+new snapshot is taken. A snapshot must also have been taken from a fully
+initialized chain to be eligible.
+
+This means you do not have to remember to clear snapshots after changing the
+toolchain or genesis. Changing either invalidates them automatically.
+
+#### Managing snapshots
+
+```
+$ lamington snapshots list
+$ lamington snapshots create
+$ lamington snapshots create --snapshot-name my-snapshot.tar.gz
+$ lamington snapshots restore <name>
+$ lamington snapshots delete <name>
+$ lamington snapshots delete-all --force
+```
+
+`create` and `restore` act on the running container, so start the chain first.
+`delete-all` refuses to run without `--force`.
+
+#### Snapshot settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `useSnapshots` | `true` | Restore a compatible snapshot instead of initializing from scratch |
+| `autoCreateSnapshot` | `true` | Snapshot the chain automatically once it is fully initialized |
+| `snapshotRetention` | `5` | Number of snapshots to keep. Older ones are removed after a new one is written |
+
+Set `useSnapshots` to `false` if you want every run to initialize a fresh chain.
+
 ### Initialization
 
 Initially setting up a project can be tedious and repetitive, so we've created a simple CLI method to setup a boilerplate EOSIO project with Lamington integration.
@@ -132,6 +193,55 @@ The `.lamingtonrc` file allows you to configure additional settings using JSON s
 ```
 
 The `keepAlive` setting prevents Lamington from stopping the EOSIO container between each build, allowing you to develop faster and compile often.
+
+### Running more than one chain at a time
+
+By default every project uses the container name `lamington` and the standard
+ports, so two projects cannot run at once. Override the name and the host ports
+to run a second chain alongside an existing one:
+
+```
+{
+  "containerName": "my-project",
+  "rpcPort": 8889,
+  "stateHistoryPort": 18081,
+  "p2pPort": 19876
+}
+```
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `containerName` | `lamington` | Name of the docker container running the chain |
+| `rpcPort` | `8888` | Host port mapped to the chain's RPC port |
+| `stateHistoryPort` | `8080` | Host port mapped to the state history port |
+| `p2pPort` | `9876` | Host port mapped to the p2p port |
+
+These are host-side ports only. Inside the container the chain always listens on
+its standard ports, so no other configuration needs to change. Tests pick the
+RPC port up automatically.
+
+### Toolchain versions
+
+Lamington ships with a pinned toolchain, so a new project works without
+specifying versions:
+
+```
+{
+  "cdt": "https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb",
+  "eos": "https://github.com/AntelopeIO/leap/releases/download/v5.0.3/leap_5.0.3_amd64.deb",
+  "contracts": "v1.9.2"
+}
+```
+
+The `eos` default is Leap rather than a legacy EOSIO release because the bundled
+system contracts import host functions (`set_parameters_packed` and
+`set_wasm_parameters_packed`) that were added after EOSIO 2.0. On an older
+`nodeos` the system contract cannot be linked and installation fails, which in
+turn means no snapshot is ever created. If you override `eos`, use a build that
+is new enough for the system contracts you intend to install.
+
+Changing any of these three values invalidates existing snapshots, since they no
+longer describe the same chain.
 
 ## Contributing to Lamington
 
