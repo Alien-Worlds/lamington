@@ -27,7 +27,17 @@ const { dockerImageName, buildImage, imageExists } = require('../lib/cli/cli-uti
 	fs.writeFileSync(path.join(workingDirectory, '.lamingtonrc'), '{}\n');
 	process.chdir(workingDirectory);
 
-	const imageName = await dockerImageName();
+	// --tag output is consumed by CI via $GITHUB_OUTPUT, which rejects multi line
+	// values. Anything the library prints while deriving the name would corrupt
+	// it, so keep stdout clear and let the tag be the only thing written.
+	const log = console.log;
+	console.log = () => undefined;
+	let imageName;
+	try {
+		imageName = await dockerImageName();
+	} finally {
+		console.log = log;
+	}
 	// `lamington:<tag>` -> `<tag>`, which is what a registry reference needs
 	const tag = imageName.replace(/^lamington:/, '');
 

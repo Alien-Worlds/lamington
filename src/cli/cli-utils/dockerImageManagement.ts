@@ -228,14 +228,11 @@ export const stopContainer = async () => {
  */
 
 export const dockerImageName = async () => {
-	console.log('dockerImageName');
 	await ConfigManager.loadConfigFromDisk();
-	console.log('ConfigManager.loadConfigFromDisk');
 	const skipSystemContracts = ConfigManager.skipSystemContracts
 		? 'skipSystemContracts'
 		: 'includeSystemContracts';
 
-	console.log('skipSystemContracts: ' + skipSystemContracts);
 	return `lamington:eos.${versionFromUrl(ConfigManager.eos)}-cdt.${versionFromUrl(
 		ConfigManager.cdt
 	)}-contracts.${ConfigManager.contracts}.${skipSystemContracts}`;
