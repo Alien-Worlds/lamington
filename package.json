@@ -17,7 +17,7 @@
 		"lamington:init": "lamington init",
 		"prepublishOnly": "npm test",
 		"prepare": "npm run build",
-		"test": "TS_NODE_FILES=true mocha --require ts-node/register src/**/*.test.ts"
+		"test": "TS_NODE_FILES=true mocha --require ts-node/register 'src/**/*.test.ts'"
 	},
 	"repository": {
 		"type": "git",
