@@ -1,0 +1,59 @@
+name: Publish chain image
+
+# The chain image only changes when the toolchain does, so this does not run per
+# commit. It publishes ghcr.io/<owner>/lamington-chain:<derived tag>, which both
+# CI and developers can pull instead of spending minutes building it.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      # DEFAULT_CONFIG holds the pinned eos/cdt/contracts versions
+      - 'src/configManager.ts'
+      # the Dockerfile is generated here
+      - 'src/cli/cli-utils/dockerImageManagement.ts'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build and push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.4'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # Derived from lamington's own config, so it cannot disagree with what
+      # startEos() will look for at runtime
+      - name: Derive the image tag
+        id: image
+        run: echo "tag=$(node scripts/chain-image.js --tag)" >> "$GITHUB_OUTPUT"
+
+      # Builds through lamington's own buildImage(), so there is no second copy
+      # of the Dockerfile to drift
+      - name: Build
+        run: node scripts/chain-image.js --build
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        env:
+          TAG: ${{ steps.image.outputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          REMOTE="ghcr.io/${OWNER,,}/lamington-chain:${TAG}"
+          docker tag "lamington:${TAG}" "$REMOTE"
+          docker push "$REMOTE"
+          echo "published $REMOTE" >> "$GITHUB_STEP_SUMMARY"
