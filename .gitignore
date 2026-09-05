@@ -71,3 +71,7 @@ lib/
 
 # Generated API documentation
 api-docs/
+
+# This project uses yarn (see the packageManager field). A stray npm lockfile
+# resolves a different dependency graph to the one CI and everyone else uses.
+package-lock.json
