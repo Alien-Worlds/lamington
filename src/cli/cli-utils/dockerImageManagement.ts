@@ -78,6 +78,36 @@ export const buildImage = async () => {
 	spinner.end('Built docker image');
 };
 /**
+ * Pulls a prebuilt chain image from the configured registry and gives it the
+ * local name the rest of the tooling looks for.
+ *
+ * Building this image takes several minutes, and on an arm64 host the amd64
+ * build runs under emulation, which is far slower again. Pulling is the
+ * difference between a coffee break and a progress bar.
+ *
+ * Never throws: no published image for this toolchain, no network, or a private
+ * registry all just mean the caller should build instead.
+ * @returns True when the image is now available locally
+ */
+export const pullImage = async (): Promise<boolean> => {
+	const registry = ConfigManager.imageRegistry;
+	if (!registry) return false;
+
+	const localName = await dockerImageName();
+	const remoteName = `${registry}/lamington-chain:${localName.replace(/^lamington:/, '')}`;
+
+	try {
+		spinner.create(`Pulling prebuilt chain image ${remoteName}`);
+		await docker.command(`pull --platform linux/amd64 ${remoteName}`);
+		await docker.command(`tag ${remoteName} ${localName}`);
+		spinner.end('Pulled prebuilt chain image');
+		return true;
+	} catch (error) {
+		spinner.end('No prebuilt image for this toolchain, building it instead');
+		return false;
+	}
+};
+/**
  * Determines if the docker image exists
  * @author Kevin Brown <github.com/thekevinbrown>
  * @returns Result of search

@@ -3,6 +3,7 @@ import * as qrcode from 'qrcode-terminal';
 import { sleep } from '../../utils';
 import {
 	buildImage,
+	pullImage,
 	imageExists,
 	startContainer,
 	resumeBlockchainInContainer,
@@ -97,17 +98,21 @@ export const startEos = async (useSnapshot: boolean = true) => {
 		}
 	}
 	if (!(await imageExists())) {
-		console.log('--------------------------------------------------------------');
-		console.log('Docker image does not yet exist. Building...');
-		console.log(
-			'Note: This will take a few minutes but only happens once for each version of the EOS tools you use.'
-		);
-		console.log();
-		console.log(`We've prepared some hold music for you: https://youtu.be/6g4dkBF5anU`);
-		console.log();
-		qrcode.generate('https://youtu.be/6g4dkBF5anU');
-		// Build EOSIO image
-		await buildImage();
+		// A published image for this exact toolchain is a minute's download against
+		// several minutes of building, so try that first and fall back silently.
+		if (!(await pullImage())) {
+			console.log('--------------------------------------------------------------');
+			console.log('Docker image does not yet exist. Building...');
+			console.log(
+				'Note: This will take a few minutes but only happens once for each version of the EOS tools you use.'
+			);
+			console.log();
+			console.log(`We've prepared some hold music for you: https://youtu.be/6g4dkBF5anU`);
+			console.log();
+			qrcode.generate('https://youtu.be/6g4dkBF5anU');
+			// Build EOSIO image
+			await buildImage();
+		}
 	}
 	// Start EOSIO
 	try {

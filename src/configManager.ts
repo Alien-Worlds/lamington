@@ -43,6 +43,11 @@ export interface LamingtonConfig {
 	autoCreateSnapshot?: boolean;
 	/** Number of snapshots to keep */
 	snapshotRetention?: number;
+	/**
+	 * Registry holding a prebuilt chain image. Set to an empty string to always
+	 * build the image locally instead of pulling it.
+	 */
+	imageRegistry?: string;
 	/** Name of the docker container running the chain */
 	containerName?: string;
 	/** Host port mapped to the container's RPC port */
@@ -75,6 +80,7 @@ export interface DefaultLamingtonConfig {
 	useSnapshots: boolean;
 	autoCreateSnapshot: boolean;
 	snapshotRetention: number;
+	imageRegistry: string;
 	containerName: string;
 	rpcPort: number;
 	stateHistoryPort: number;
@@ -131,6 +137,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	useSnapshots: true,
 	autoCreateSnapshot: true,
 	snapshotRetention: 5,
+	imageRegistry: 'ghcr.io/alien-worlds',
 	containerName: 'lamington',
 	rpcPort: 8888,
 	stateHistoryPort: 8080,
@@ -409,6 +416,17 @@ export class ConfigManager {
 			(ConfigManager.config && ConfigManager.config.snapshotRetention) ||
 			DEFAULT_CONFIG.snapshotRetention
 		);
+	}
+
+	/**
+	 * Returns the registry holding a prebuilt chain image. Building that image
+	 * takes minutes, and on an arm64 host the amd64 build runs under emulation,
+	 * so it is far slower again. An empty value disables pulling.
+	 */
+	static get imageRegistry(): string {
+		return ConfigManager.config && ConfigManager.config.imageRegistry !== undefined
+			? ConfigManager.config.imageRegistry
+			: DEFAULT_CONFIG.imageRegistry;
 	}
 
 	/**
