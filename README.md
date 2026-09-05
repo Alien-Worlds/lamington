@@ -211,6 +211,7 @@ to run a second chain alongside an existing one:
 
 | Setting | Default | Description |
 | --- | --- | --- |
+| `imageRegistry` | `ghcr.io/alien-worlds` | Registry holding a prebuilt chain image. Set to `""` to always build locally |
 | `containerName` | `lamington` | Name of the docker container running the chain |
 | `rpcPort` | `8888` | Host port mapped to the chain's RPC port |
 | `stateHistoryPort` | `8080` | Host port mapped to the state history port |
@@ -219,6 +220,24 @@ to run a second chain alongside an existing one:
 These are host-side ports only. Inside the container the chain always listens on
 its standard ports, so no other configuration needs to change. Tests pick the
 RPC port up automatically.
+
+### The chain image
+
+The first run needs a docker image containing `nodeos` and the contract
+toolchain. Building it takes several minutes, and on an Apple Silicon machine
+the amd64 build runs under emulation, so it takes considerably longer.
+
+Lamington tries to pull a prebuilt image for your exact toolchain from
+`imageRegistry` before falling back to building one. The image tag encodes the
+`eos`, `cdt` and `contracts` versions, so changing any of them simply misses the
+pull and builds, rather than silently using a stale image.
+
+Set `"imageRegistry": ""` to always build locally, for example when working
+offline.
+
+Note this is separate from snapshots. The image holds the toolchain; a snapshot
+holds chain state. They stack: pulling the image skips the build, and restoring
+a snapshot skips the chain initialization.
 
 ### Toolchain versions
 
@@ -242,6 +261,20 @@ is new enough for the system contracts you intend to install.
 
 Changing any of these three values invalidates existing snapshots, since they no
 longer describe the same chain.
+
+## Running the tests
+
+```
+$ yarn test               # fast: unit and load smoke tests
+$ yarn verify:package     # packs the module and installs it into an empty project
+$ yarn test:integration   # drives a real chain in docker, takes a few minutes
+```
+
+`yarn test:integration` exercises the full snapshot lifecycle against a real
+container: system contracts installing, snapshot creation, archive contents,
+restore, and the compatibility gate. It uses its own container name and ports,
+so it will not disturb a chain you already have running. It needs docker, and
+fails rather than skipping if docker is missing.
 
 ## Contributing to Lamington
 
