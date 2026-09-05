@@ -682,7 +682,7 @@ diff@^7.0.0:
 
 "docker-cli-js@https://github.com/Alien-Worlds/docker-cli-js":
   version "2.10.0"
-  resolved "git+ssh://git@github.com/Alien-Worlds/docker-cli-js.git#2e28fd9673435bb62e9360bc801c14588109fec8"
+  resolved "git+https://github.com/Alien-Worlds/docker-cli-js.git#2e28fd9673435bb62e9360bc801c14588109fec8"
   dependencies:
     cli-table-2-json "^1.0.13"
     dockermachine-cli-js "^3.0.5"
