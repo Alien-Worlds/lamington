@@ -8,12 +8,24 @@ program
 	.allowUnknownOption(false)
 	.version(packageConfig.version)
 	.description(packageConfig.description)
-	.command('init', 'initialize a lamington project')
-	.command('build', 'build all smart contracts')
-	.command('start', 'start the eos blockchain in docker')
-	.command('stop', 'stop the eos blockchain in docker')
-	.command('test', 'run your unit / integration tests')
-	.command('snapshots', 'manage blockchain snapshots')
+	.command('init', 'initialize a lamington project', {
+		executableFile: 'lamington-init',
+	})
+	.command('build', 'build all smart contracts', {
+		executableFile: 'lamington-build',
+	})
+	.command('start', 'start the eos blockchain in docker', {
+		executableFile: 'lamington-start',
+	})
+	.command('stop', 'stop the eos blockchain in docker', {
+		executableFile: 'lamington-stop',
+	})
+	.command('test', 'run your unit / integration tests', {
+		executableFile: 'lamington-test',
+	})
+	.command('snapshots', 'manage blockchain snapshots', {
+		executableFile: 'lamington-snapshots',
+	})
 	.on('*', () => {
 		console.log('Unknown Command: ' + program.args.join(' '));
 		program.help();
