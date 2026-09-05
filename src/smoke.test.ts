@@ -53,6 +53,15 @@ const CLI_ENTRY_POINTS = [
 	'cli/lamington-snapshots.ts',
 ];
 
+/**
+ * Subcommands reached by dispatching through `cli/index.ts`, rather than by
+ * running their entry point directly.
+ *
+ * `start`, `stop` and `init` are absent for the same reason as above: the
+ * parent hands `--help` to the child process, which would run its work.
+ */
+const DISPATCHED_SUBCOMMANDS = ['build', 'test', 'snapshots'];
+
 describe('smoke', function () {
 	context('library modules load', function () {
 		for (const moduleName of LIBRARY_MODULES) {
@@ -85,6 +94,44 @@ describe('smoke', function () {
 				assert.notInclude(output, 'clashes with existing property', `${entryPoint} has a bad option`);
 				assert.strictEqual(result.status, 0, `${entryPoint} exited ${result.status}:\n${output}`);
 				assert.include(output, 'Usage:', `${entryPoint} printed no usage text`);
+			});
+		}
+	});
+
+	/**
+	 * Dispatch is a separate failure mode from loading. commander resolves a
+	 * standalone subcommand to `<basename of argv[1]>-<subcommand>` and, when
+	 * that file is not found next to the entry point, falls back to spawning the
+	 * bare name through $PATH. Asking an entry point for its own `--help` never
+	 * exercises that path, so `lamington snapshots` could be broken -- or could
+	 * execute an unrelated binary that happened to be on $PATH -- while every
+	 * test above still passed.
+	 */
+	context('cli dispatches to its subcommands', function () {
+		this.timeout(60000);
+
+		for (const subcommand of DISPATCHED_SUBCOMMANDS) {
+			it(`should dispatch ${subcommand} through cli/index.ts`, function () {
+				const result = spawnSync(
+					process.execPath,
+					['-r', 'ts-node/register', path.join('src', 'cli', 'index.ts'), subcommand, '--help'],
+					{
+						cwd: REPO_ROOT,
+						encoding: 'utf8',
+						env: { ...process.env, TS_NODE_FILES: 'true' },
+						timeout: 55000,
+					}
+				);
+
+				const output = `${result.stdout || ''}${result.stderr || ''}`;
+
+				assert.notInclude(
+					output,
+					'does not exist',
+					`${subcommand} did not resolve to a local executable, so commander fell through to $PATH`
+				);
+				assert.strictEqual(result.status, 0, `${subcommand} exited ${result.status}:\n${output}`);
+				assert.include(output, 'Usage:', `${subcommand} printed no usage text`);
 			});
 		}
 	});
