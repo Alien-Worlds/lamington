@@ -21,8 +21,8 @@ export const docker = new Docker(new Options(undefined, undefined, true));
  * @returns Version identifier
  */
 export const versionFromUrl = (url: string) => {
-	// Looks for strings in this format: `/v1.4.6/`
-	const pattern = /\/(v\d+\.\d+\.\d+)\//g;
+	// Extracts versions such as `/v1.4.6/` or `/ce-v1.0.3wax01/`.
+	const pattern = /\/(?:[a-zA-Z0-9]+-)?(v\d+\.\d+\.\d+[a-zA-Z0-9]*)\//;
 	const result = pattern.exec(url);
 
 	// Handle result
