@@ -195,6 +195,19 @@ describe('snapshot lifecycle', function () {
 			snapshotManagement.isSnapshotCompatible(metadata),
 			'a freshly created snapshot was judged incompatible'
 		);
+
+		// The archive only carries blocks.log, which holds irreversible blocks, so
+		// everything it describes has to be irreversible or the tail is dropped and
+		// the restored chain is quietly incomplete. This is machine speed sensitive
+		// in the worst way: a slow machine gives irreversibility time to catch up on
+		// its own and hides the bug, which is exactly what happened here until CI
+		// ran the suite on a faster runner.
+		const info = await post('/v1/chain/get_info');
+		assert.isAtLeast(
+			info.last_irreversible_block_num,
+			metadata.blockHeight,
+			'the snapshot covers blocks that were not yet irreversible'
+		);
 	});
 
 	it('should leave the container running after the snapshot pause', async function () {

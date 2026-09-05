@@ -123,6 +123,37 @@ const getBlockchainInfo = async (): Promise<any> => {
 };
 
 /**
+ * Waits until every block produced so far is irreversible.
+ *
+ * A snapshot only captures blocks.log, which holds irreversible blocks. The
+ * reversible block database is excluded because nodeos rejects it as dirty and
+ * rebuilds it on replay. That means anything not yet irreversible when the
+ * snapshot is taken is simply lost.
+ *
+ * It matters most for exactly the case snapshots exist to serve: taking one
+ * immediately after initialization. On a fast machine the last steps of
+ * init_blockchain.sh, including the `init` action that creates the rammarket
+ * table, are still reversible, so restoring produced a chain that looked
+ * initialized but had no system contract state. On a slow machine the same code
+ * worked, because initialization took long enough for irreversibility to catch
+ * up on its own.
+ *
+ * @param attempts Number of half second polls before giving up
+ * @returns True once the head block is irreversible
+ */
+const waitForIrreversibility = async (attempts: number = 120): Promise<boolean> => {
+	const { head_block_num: target } = await getBlockchainInfo();
+
+	for (let attempt = 0; attempt < attempts; attempt++) {
+		const { last_irreversible_block_num: irreversible } = await getBlockchainInfo();
+		if (irreversible >= target) return true;
+		await sleep(500);
+	}
+
+	return false;
+};
+
+/**
  * Checks if snapshot is compatible with current configuration
  * @param metadata Snapshot metadata
  * @returns True if compatible
@@ -402,6 +433,12 @@ export const createSnapshot = async (snapshotName?: string): Promise<string> => 
 	spinner.create('Creating blockchain snapshot');
 
 	try {
+				// Everything the snapshot captures has to be irreversible first, or the
+				// tail of it is dropped and the restored chain is quietly incomplete
+				if (!(await waitForIrreversibility())) {
+					throw new Error('Timed out waiting for the chain to become irreversible');
+				}
+
 				// Ensure snapshot directory exists
 				const snapshotDir = await ensureSnapshotDirectory();
 
