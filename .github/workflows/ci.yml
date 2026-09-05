@@ -52,3 +52,39 @@ jobs:
       # devDependencies are present, so it cannot notice a runtime dependency
       # declared in the wrong section. That mistake shipped in 1.2.0 and 1.3.0.
       - run: yarn verify:package
+
+  integration:
+    name: Snapshot lifecycle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.4'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      - name: Derive the chain image tag
+        id: image
+        run: echo "tag=$(node scripts/chain-image.js --tag)" >> "$GITHUB_OUTPUT"
+
+      # Give the prebuilt image the local name startEos() looks for, so
+      # imageExists() is satisfied and nothing is built. This is an optimisation
+      # only: if the image was never published, or the toolchain moved before the
+      # publish workflow ran, the tests still pass, they just build it first.
+      - name: Use the prebuilt chain image if there is one
+        continue-on-error: true
+        env:
+          TAG: ${{ steps.image.outputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          REMOTE="ghcr.io/${OWNER,,}/lamington-chain:${TAG}"
+          docker pull "$REMOTE"
+          docker tag "$REMOTE" "lamington:${TAG}"
+
+      # Snapshots are deliberately NOT cached between runs. Caching them would
+      # mean only the restore path is ever exercised, and snapshot creation is
+      # where most of the defects were.
+      - run: yarn test:integration
