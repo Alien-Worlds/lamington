@@ -89,6 +89,32 @@ const containerIsRunning = (): boolean => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Polls until a condition holds, or gives up.
+ *
+ * startEos() returns once eosIsReady() passes, which is a single get_code call.
+ * Reading a contract table can still fail for a moment after that on a slow
+ * machine, and areSystemContractsInstalled() reports any error as false, so
+ * asserting it the instant startEos() returns is a race.
+ *
+ * This is only ever used for checks that something *appears*, and only where a
+ * stronger assertion has already run. It must never be used to soften the
+ * question of whether the chain was restored at all: a wiped chain would
+ * eventually reinstall its system contracts, so a poll on its own would go
+ * green against exactly the bug this suite exists to catch.
+ */
+const until = async (
+	description: string,
+	condition: () => Promise<boolean>,
+	attempts = 30
+): Promise<void> => {
+	for (let attempt = 0; attempt < attempts; attempt++) {
+		if (await condition()) return;
+		await sleep(1000);
+	}
+	assert.fail(`${description} within ${attempts}s`);
+};
+
 describe('snapshot lifecycle', function () {
 	// A cold run builds or pulls a 1.5GB image before it can start
 	this.timeout(20 * 60 * 1000);
@@ -150,7 +176,7 @@ describe('snapshot lifecycle', function () {
 		// EOSIO 2.0, so on the previous default toolchain it could never be linked
 		// and init looped forever without ever reporting failure.
 		assert.isTrue(installed, 'system contracts never finished installing');
-		assert.isAbove(await rammarketRows(), 0, 'rammarket table was never initialized');
+		await until('rammarket table was never initialized', async () => (await rammarketRows()) > 0);
 	});
 
 	it('should create a snapshot with complete metadata', async function () {
@@ -224,11 +250,13 @@ describe('snapshot lifecycle', function () {
 			'the chain was reinitialised rather than restored'
 		);
 
-		assert.isTrue(
-			await snapshotManagement.areSystemContractsInstalled(),
-			'system contracts did not survive the restore'
+		// Safe to poll: the head block assertion above has already established that
+		// this is the restored chain rather than a fresh one.
+		await until(
+			'system contracts did not survive the restore',
+			() => snapshotManagement.areSystemContractsInstalled()
 		);
-		assert.isAbove(await rammarketRows(), 0, 'rammarket did not survive the restore');
+		await until('rammarket did not survive the restore', async () => (await rammarketRows()) > 0);
 	});
 
 	it('should reject a snapshot taken under a different genesis', async function () {
