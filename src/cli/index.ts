@@ -4,6 +4,7 @@ import * as program from 'commander';
 const packageConfig = require('../../package.json');
 
 program
+	.name('lamington')
 	.allowUnknownOption(false)
 	.version(packageConfig.version)
 	.description(packageConfig.description)
