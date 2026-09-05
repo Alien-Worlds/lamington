@@ -4,8 +4,9 @@
 
 Inspired by the popular Truffle framework and developed in Typescript, Lamington makes smart contract development simple for any level of EOSIO developer.
 
-[![Build Status](https://travis-ci.org/CoinageCrypto/lamington.svg?branch=master)](https://travis-ci.org/CoinageCrypto/lamington)
-[![Supported by Coinage](https://coina.ge/assets/supported-by-coinage-badge.svg)](https://coina.ge)
+[![CI](https://github.com/Alien-Worlds/lamington/actions/workflows/ci.yml/badge.svg)](https://github.com/Alien-Worlds/lamington/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Alien-Worlds/lamington/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Alien-Worlds/lamington/actions/workflows/codeql-analysis.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
 
@@ -14,7 +15,7 @@ The Lamington library includes CLI tools and JavaScript utilities to streamline 
 - Skill level agnostic
 - TypeScript ready
 - Containerized development
-- Fast start-up by restoring blockchain snapshots
+- Optional fast start-up by restoring blockchain snapshots
 - Common JavaScript testing frameworks
 - Multi-environment support
 - Simple CLI commands
@@ -34,8 +35,13 @@ Lamington requires Docker and NodeJS to be installed before it can be used.
 Lamington includes command line tools and JavaScript utilities for EOSIO contract development. We recommend installing the framework as a development dependency within your project. This lets you run commands like `lamington test` in your project.
 
 ```
-$ npm install --save-dev lamington
+$ npm install --save-dev github:Alien-Worlds/lamington#v1.4.0
 ```
+
+> **Install from this repository, not from npm.** The `lamington` package on
+> npm is the original CoinageCrypto project and has not been published since
+> `1.0.0-alpha.6`. This fork is consumed by git ref, so pin a tag to keep builds
+> reproducible.
 
 From there you just need to add node scripts to your `package.json` file that trigger `lamington` actions, for example:
 
@@ -59,7 +65,7 @@ If you'd like the convenience of using the `lamington` command without adding it
 To install globally, run:
 
 ```
-$ npm install -g lamington
+$ npm install -g github:Alien-Worlds/lamington#v1.4.0
 ```
 
 ## Usage
@@ -98,7 +104,7 @@ Lamington was built with testing in mind. We considered the most commonly used t
 $ lamington test
 ```
 
-For a full list of available JavaScript utilities, please [visit the documentation here](https://docs.lamington.io/testing).
+For a full list of available JavaScript utilities, see the [API documentation](https://api.lamington.io).
 
 ### Snapshots
 
@@ -315,22 +321,15 @@ You can find more information about the Lamington tool-set and join our growing 
 
 [Official Website](https://lamington.io)
 
-## Roadmap
-
-### LamingtonJS
-
-Core Lamington front end toolset
-
-### Lamington-React
-
-React context management for LamingtonJS
-
-### Lamington-Angular
-
 ## Contributors
 
-- [Kevin Brown](https://github.com/thekevinbrown), Creator & Developer
-- [Mitch Pierias](https://github.com/MitchPierias), Developer
+- [Kevin Brown](https://github.com/thekevinbrown), creator
+- [Mitch Pierias](https://github.com/MitchPierias)
+- [Angelo Laub](https://github.com/angelol)
+- [Dallas Johnson](https://github.com/dallasjohnson)
+- [Johan Nordberg](https://github.com/jnordberg)
+
+This fork is maintained by [Alien Worlds](https://github.com/Alien-Worlds).
 
 ## Supporters
 
