@@ -182,7 +182,6 @@ export const isSnapshotCompatible = (metadata: SnapshotMetadata): boolean => {
  */
 const getContainerId = async (): Promise<string | null> => {
     try {
-			console.log('Debug: Attempting to get container ID...');
 
 			// Try the format approach first
 			// Anchor the filter: `--filter name=` is a substring match, so an unanchored
@@ -190,12 +189,10 @@ const getContainerId = async (): Promise<string | null> => {
 			const result = await docker.command(
 				`ps --filter name=^${ConfigManager.containerName}$ --format {{.ID}}`
 			);
-			console.log('Debug: Docker ps result:', JSON.stringify(result, null, 2));
 
 			// Fix: Parse from raw output instead of containerList
 			if (result.raw && result.raw.trim()) {
 				const containerId = result.raw.trim();
-				console.log('Debug: Found container ID in raw:', containerId);
 				return containerId;
 			}
 
@@ -203,7 +200,6 @@ const getContainerId = async (): Promise<string | null> => {
 			const inspectResult = await docker.command(
 				`ps --filter name=^${ConfigManager.containerName}$`
 			);
-			console.log('Debug: Alternative ps result:', JSON.stringify(inspectResult, null, 2));
 
 			// Parse from alternative format
 			if (inspectResult.raw) {
@@ -211,7 +207,6 @@ const getContainerId = async (): Promise<string | null> => {
 				if (lines.length > 1) {
 					const containerId = lines[1].trim().split(' ')[0];
 					if (containerId) {
-						console.log('Debug: Found container ID in alternative format:', containerId);
 						return containerId;
 					}
 				}
@@ -219,7 +214,7 @@ const getContainerId = async (): Promise<string | null> => {
 
 			return null;
 		} catch (error) {
-			console.error('Debug: Error getting container ID:', error);
+			console.error('Error getting container ID:', error);
 			return null;
 		}
 };
@@ -236,7 +231,6 @@ const getContainerId = async (): Promise<string | null> => {
  */
 const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
 	try {
-				console.log('Debug: Starting docker volume backup with file exclusion...');
 
 				// Get the container ID
 				const containerId = await getContainerId();
@@ -245,23 +239,18 @@ const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
 					throw new Error('No running container found');
 				}
 
-				console.log('Debug: Using container ID:', containerId);
 
 				// Try to pause the blockchain process to avoid file changes during backup
 				try {
-					console.log('Debug: Attempting to pause blockchain...');
 					await docker.command(`exec ${containerId} pkill -STOP nodeos`);
 					await new Promise((resolve) => setTimeout(resolve, 2000));
 				} catch (pauseError) {
-					console.log(
-						'Debug: Could not pause blockchain, continuing anyway:',
-						(pauseError as Error).message
-					);
+					// Pausing is best effort: it only reduces file churn during the
+					// backup. tar runs with --ignore-failed-read either way.
 				}
 
 				try {
 					// Create backup using docker exec and tar with file exclusion
-					console.log('Debug: Creating backup archive with file exclusion...');
 
 					// Use tar with ignore errors and exclude volatile files that cause issues
 					// NOTE: every option must come BEFORE the `-C`/member arguments. tar
@@ -284,28 +273,23 @@ const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
 						`--exclude=data/state-history ` +
 						`-C /mnt/dev data`;
 
-					console.log('Debug: Running tar command with exclusions...');
 					await docker.command(tarCommand);
 
 					// Copy backup from container to host
-					console.log('Debug: Copying backup to host...');
 					await docker.command(`cp ${containerId}:/backup.tar.gz ${backupPath}`);
 
 					// Clean up backup file from container
-					console.log('Debug: Cleaning up backup file...');
 					await docker.command(`exec ${containerId} rm /backup.tar.gz`);
 
-					console.log('Debug: Backup completed successfully');
 					return true;
 				} catch (backupError) {
 					console.error(
-						'Debug: Primary backup method failed, trying fallback:',
+						'Primary backup method failed, trying fallback:',
 						(backupError as Error).message
 					);
 
 					// Fallback: Try copying individual directories instead of full tar
 					try {
-						console.log('Debug: Attempting fallback backup method...');
 
 						// Create a temporary directory structure
 						await docker.command(`exec ${containerId} mkdir -p /backup_data`);
@@ -319,24 +303,23 @@ const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
 						await docker.command(`cp ${containerId}:/backup.tar.gz ${backupPath}`);
 						await docker.command(`exec ${containerId} rm -rf /backup_data /backup.tar.gz`);
 
-						console.log('Debug: Fallback backup method succeeded');
 						return true;
 					} catch (fallbackError) {
-						console.error('Debug: Fallback backup also failed:', (fallbackError as Error).message);
+						console.error('Fallback backup also failed:', (fallbackError as Error).message);
 						return false;
 					}
 				}
 			} finally {
 		// Resume the blockchain process
 		try {
-			console.log('Debug: Resuming blockchain...');
 			const containerId = await getContainerId();
 			if (containerId) {
 				await docker.command(`exec ${containerId} pkill -CONT nodeos`);
 				await new Promise((resolve) => setTimeout(resolve, 2000));
 			}
 		} catch (resumeError) {
-			console.log('Debug: Could not resume blockchain:', (resumeError as Error).message);
+			// Best effort: the backup result is already decided, and the container
+			// may legitimately be gone by now.
 		}
 	}
 };
@@ -348,7 +331,6 @@ const dockerVolumeBackup = async (backupPath: string): Promise<boolean> => {
  */
 const dockerVolumeRestore = async (backupPath: string): Promise<boolean> => {
 	try {
-		console.log('Debug: Starting docker volume restore...');
 
 		// Get the current container ID
 		const containerId = await getContainerId();
@@ -357,46 +339,33 @@ const dockerVolumeRestore = async (backupPath: string): Promise<boolean> => {
 			throw new Error('No running container found for restoration');
 		}
 
-		console.log('Debug: Using container ID for restore:', containerId);
 
 		// Check if nodeos process exists before trying to pause it
-		console.log('Debug: Checking if nodeos process exists...');
 		try {
 			const checkProcessResult = await docker.command(`exec ${containerId} pgrep nodeos`);
 			const hasNodeosProcess = checkProcessResult.raw && checkProcessResult.raw.trim();
 
 			if (hasNodeosProcess) {
-				console.log('Debug: nodeos process found, pausing for restoration...');
 				// Pause the blockchain process during restoration
 				await docker.command(`exec ${containerId} pkill -STOP nodeos`);
 				await new Promise((resolve) => setTimeout(resolve, 2000));
-			} else {
-				console.log('Debug: No nodeos process found, proceeding without pause');
 			}
 		} catch (checkError) {
-			console.log(
-				'Debug: Error checking for nodeos process, assuming it does not exist:',
-				checkError instanceof Error ? checkError.message : String(checkError)
-			);
 			// Continue without pausing if we can't check
 		}
 
 		try {
 			// Copy backup into the running container
-			console.log('Debug: Copying backup to container...');
 			await docker.command(`cp ${backupPath} ${containerId}:/restore.tar.gz`);
 
 			// Remove old data and extract new data
-			console.log('Debug: Extracting restored data...');
 			await docker.command(`exec ${containerId} rm -rf /mnt/dev/data`);
 			await docker.command(`exec ${containerId} mkdir -p /mnt/dev/data`);
 			await docker.command(`exec ${containerId} tar xzf /restore.tar.gz -C /mnt/dev`);
 
 			// Clean up backup file
-			console.log('Debug: Cleaning up restore files...');
 			await docker.command(`exec ${containerId} rm /restore.tar.gz`);
 
-			console.log('Debug: Restoration completed successfully');
 			return true;
 		} finally {
 			// Only resume if we actually paused
@@ -405,17 +374,13 @@ const dockerVolumeRestore = async (backupPath: string): Promise<boolean> => {
 				const hasNodeosProcess = checkProcessResult.raw && checkProcessResult.raw.trim();
 
 				if (hasNodeosProcess) {
-					console.log('Debug: Resuming blockchain after restoration...');
 					await docker.command(`exec ${containerId} pkill -CONT nodeos`);
 					await new Promise((resolve) => setTimeout(resolve, 2000));
-				} else {
-					console.log('Debug: No nodeos process to resume');
 				}
 			} catch (checkError) {
-				console.log(
-					'Debug: Error checking for nodeos process during resume:',
-					checkError instanceof Error ? checkError.message : String(checkError)
-				);
+				// Nothing to resume, or the container is already gone. The restore
+				// itself has either succeeded or thrown by this point, so failing to
+				// resume must not mask that result.
 			}
 		}
 	} catch (error) {

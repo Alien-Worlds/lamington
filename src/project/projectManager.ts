@@ -97,7 +97,6 @@ export class ProjectManager {
 			process.exit(1);
 		}
 		ProjectManager.cache = JSON.parse(packageJson);
-		console.log(ProjectManager.cache);
 	}
 
 	/**

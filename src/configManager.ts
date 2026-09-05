@@ -37,9 +37,15 @@ export interface LamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
-	/** Restore from a compatible snapshot instead of initializing from scratch */
+	/**
+	 * Master switch for the snapshot feature. When false (the default) the chain
+	 * is always initialized from scratch and no snapshots are read or written.
+	 */
 	useSnapshots?: boolean;
-	/** Snapshot the chain automatically once it is fully initialized */
+	/**
+	 * Snapshot the chain automatically once it is fully initialized. Has no
+	 * effect unless `useSnapshots` is also true.
+	 */
 	autoCreateSnapshot?: boolean;
 	/** Number of snapshots to keep */
 	snapshotRetention?: number;
@@ -118,7 +124,8 @@ export namespace LamingtonDebugLevel {
  */
 const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	eos: 'https://github.com/AntelopeIO/leap/releases/download/v5.0.3/leap_5.0.3_amd64.deb',
-	cdt: 'https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb',
+	cdt:
+		'https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb',
 	contracts: 'v1.9.2',
 	debug: LamingtonDebugLevel.NONE,
 	debugTransactions: false,
@@ -134,7 +141,7 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	cppFlags: '',
 	benchmark: true,
 	compiledContractsSearchPaths: [],
-	useSnapshots: true,
+	useSnapshots: false,
 	autoCreateSnapshot: true,
 	snapshotRetention: 5,
 	imageRegistry: 'ghcr.io/alien-worlds',
@@ -338,7 +345,9 @@ export class ConfigManager {
 	 * Returns the array of excluded glob patterns for test files
 	 */
 	static get excludeTests() {
-		return (ConfigManager.config && ConfigManager.config.excludeTests) || DEFAULT_CONFIG.excludeTests;
+		return (
+			(ConfigManager.config && ConfigManager.config.excludeTests) || DEFAULT_CONFIG.excludeTests
+		);
 	}
 
 	/**
@@ -390,7 +399,9 @@ export class ConfigManager {
 
 	/**
 	 * Whether a compatible snapshot should be restored instead of initializing a
-	 * chain from scratch
+	 * chain from scratch. Off by default: on a current toolchain a fresh chain
+	 * initializes in roughly 20s, so restoring saves too little to be worth the
+	 * risk of running against stale chain state.
 	 */
 	static get useSnapshots(): boolean {
 		return ConfigManager.config && ConfigManager.config.useSnapshots !== undefined
@@ -400,9 +411,14 @@ export class ConfigManager {
 
 	/**
 	 * Whether a snapshot should be created automatically once the chain is fully
-	 * initialized
+	 * initialized. `useSnapshots` is the master switch: with it off, nothing
+	 * reads or writes snapshots, so turning it off also silences creation.
 	 */
 	static get autoCreateSnapshot(): boolean {
+		if (!ConfigManager.useSnapshots) {
+			return false;
+		}
+
 		return ConfigManager.config && ConfigManager.config.autoCreateSnapshot !== undefined
 			? ConfigManager.config.autoCreateSnapshot
 			: DEFAULT_CONFIG.autoCreateSnapshot;

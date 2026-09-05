@@ -38,14 +38,11 @@ export const versionFromUrl = (url: string) => {
  */
 
 export const buildImage = async () => {
-	console.log('build image');
 	// Log notification
 	spinner.create('Building docker image for :' + ConfigManager.cdt + ' on: ' + ConfigManager.eos);
 	// Clear the docker directory if it exists.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
-	console.log('deleting temp directory.');
 	await mkdirp(TEMP_DOCKER_DIRECTORY, {});
-	console.log('\n\n\n creating temp directory.');
 
 	// Write a Dockerfile so Docker knows what to build.
 	const systemDeps = ['build-essential', 'ca-certificates', 'cmake', 'curl', 'git', 'wget'];
@@ -66,12 +63,10 @@ export const buildImage = async () => {
 		`.replace(/\t/gm, '')
 	);
 	// Execute docker build process
+	// No callback: docker.command rejects on a failed build, and a callback here
+	// would print "error: null" on every successful one.
 	await docker.command(
-		`build --platform linux/amd64 -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`,
-		(err, data) => {
-			console.log('error: ' + err);
-			console.log('data: ' + data);
-		}
+		`build --platform linux/amd64 -t ${await dockerImageName()} "${TEMP_DOCKER_DIRECTORY}"`
 	);
 	// Clean up after ourselves.
 	await rimraf(TEMP_DOCKER_DIRECTORY);
@@ -139,7 +134,6 @@ export const startContainer = async (skipInit: boolean = false) => {
 
 	if (skipInit) {
 		// Start container in empty state for snapshot restoration
-		console.log('Starting container in empty state for snapshot restoration');
 		await docker.command(
 			`run
 				--rm
@@ -162,7 +156,6 @@ export const startContainer = async (skipInit: boolean = false) => {
 		);
 	} else {
 		// Start container with normal initialization
-		console.log('Starting container with normal initialization');
 		await docker.command(
 			`run
 				--rm
@@ -189,7 +182,6 @@ export const startContainer = async (skipInit: boolean = false) => {
 };
 
 export const resumeBlockchainInContainer = async () => {
-	console.log('Resuming blockchain process in container');
 	try {
 		// Resume against the restored data directory. This deliberately does NOT
 		// run init_blockchain.sh: that script clears /mnt/dev/data and re-runs the

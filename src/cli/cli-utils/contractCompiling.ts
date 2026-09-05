@@ -27,7 +27,6 @@ class FileModTracker {
 		if (!fs.existsSync(this.path)) return true;
 		const prevStats = await readFile(this.path);
 		const prevModTime = new Date(JSON.parse(prevStats.toString()).lastmodified);
-		console.log(prevModTime, this.modDate);
 		return prevModTime.getUTCMilliseconds() != this.modDate.getMilliseconds();
 	}
 }
