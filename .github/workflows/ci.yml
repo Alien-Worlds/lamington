@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Nothing here needs write access to the repository
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an in-flight run redundant
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Types and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches .tool-versions so CI and local runs agree
+          node-version: '18.20.4'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      - run: yarn check:types
+
+      - run: yarn test
+
+  package:
+    name: Packaged install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.4'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # Packs the module and installs the tarball into an empty project. This is
+      # a separate job because it is the only check that sees the package the
+      # way a consumer does: the test suite above runs inside this repo, where
+      # devDependencies are present, so it cannot notice a runtime dependency
+      # declared in the wrong section. That mistake shipped in 1.2.0 and 1.3.0.
+      - run: yarn verify:package
