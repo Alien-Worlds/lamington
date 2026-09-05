@@ -102,20 +102,37 @@ For a full list of available JavaScript utilities, please [visit the documentati
 
 ### Snapshots
 
-Initializing a chain from scratch installs the EOSIO system contracts, which is
-by far the slowest part of `lamington start` and `lamington test`. Lamington can
-snapshot a fully initialized chain and restore it on subsequent runs instead of
-repeating that work.
+Lamington can snapshot a fully initialized chain and restore it on later runs
+instead of installing the EOSIO system contracts again.
 
-This is automatic and needs no configuration:
+**Snapshots are off by default.** Turn them on with `useSnapshots: true` in
+`.lamingtonrc`:
 
 1. On the first run the chain initializes normally. Once the system contracts are
    confirmed installed, a snapshot is written to `.lamington/snapshots/`.
 2. On later runs a compatible snapshot is restored instead of initializing.
 
-On the small test chain used to develop this, a full initialization took about 22
-seconds against about 6 seconds to restore. The saving grows with however much
-work your project's initialization does, because restore time stays roughly flat.
+#### Whether it is worth turning on
+
+Measured on the current toolchain (Leap 5.0.3), over three repetitions:
+
+| | time |
+| --- | --- |
+| initialize a chain from scratch | ~21s |
+| restore from a snapshot | ~6s |
+| cost of writing the snapshot, on the run that creates it | ~6s |
+
+So restoring saves roughly 15 seconds per run. Whether that matters depends
+entirely on what your suite does *after* the chain is up. On one real project
+whose suite takes about 9 minutes, 15 seconds was inside the run-to-run noise and
+the saving was not measurable end to end.
+
+Snapshots only skip chain initialization. They do **not** skip your own
+`before` hooks, so deploying your contracts and building fixtures still happens
+on every run — which for most projects is the larger cost.
+
+Worth enabling if you start chains often and your suites are short. Not worth it
+if chain startup is a small fraction of your run.
 
 #### What a snapshot contains
 
@@ -154,11 +171,15 @@ $ lamington snapshots delete-all --force
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `useSnapshots` | `true` | Restore a compatible snapshot instead of initializing from scratch |
-| `autoCreateSnapshot` | `true` | Snapshot the chain automatically once it is fully initialized |
+| `useSnapshots` | `false` | Master switch. Restore a compatible snapshot instead of initializing from scratch |
+| `autoCreateSnapshot` | `true` | Snapshot the chain automatically once it is fully initialized. No effect unless `useSnapshots` is also true |
 | `snapshotRetention` | `5` | Number of snapshots to keep. Older ones are removed after a new one is written |
 
-Set `useSnapshots` to `false` if you want every run to initialize a fresh chain.
+`useSnapshots` is a master switch: with it off, nothing reads or writes snapshots,
+so the `lamington snapshots` commands above are the only way to touch them.
+
+The `lamington snapshots` CLI works regardless of the setting, so you can create
+and restore snapshots by hand without enabling the automatic behaviour.
 
 ### Initialization
 

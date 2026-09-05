@@ -23,6 +23,11 @@ import * as path from 'path';
 
 /** Ports and a container name of its own, so a developer's chain is untouched */
 const PROJECT_CONFIG = {
+	// Set explicitly: snapshots are OFF by default, and this suite exists to
+	// exercise them. Relying on the default would let every test here pass while
+	// silently testing the non-snapshot path.
+	useSnapshots: true,
+	autoCreateSnapshot: true,
 	containerName: 'lamington-integration',
 	rpcPort: 8899,
 	stateHistoryPort: 18099,
@@ -265,9 +270,8 @@ describe('snapshot lifecycle', function () {
 
 		// Safe to poll: the head block assertion above has already established that
 		// this is the restored chain rather than a fresh one.
-		await until(
-			'system contracts did not survive the restore',
-			() => snapshotManagement.areSystemContractsInstalled()
+		await until('system contracts did not survive the restore', () =>
+			snapshotManagement.areSystemContractsInstalled()
 		);
 		await until('rammarket did not survive the restore', async () => (await rammarketRows()) > 0);
 	});
