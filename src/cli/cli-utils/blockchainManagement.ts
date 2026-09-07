@@ -11,7 +11,11 @@ import {
 } from './dockerImageManagement';
 import * as spinner from './logIndicator';
 import { ConfigManager } from '../../configManager';
-import { restoreSnapshot, findCompatibleSnapshot } from './blockchainSnapshotManagement';
+import {
+	restoreSnapshot,
+	findCompatibleSnapshot,
+	waitForSystemContracts,
+} from './blockchainSnapshotManagement';
 
 /** @hidden Maximum number of EOS connection attempts before fail */
 export const MAX_CONNECTION_ATTEMPTS = 40;
@@ -123,6 +127,26 @@ export const startEos = async (useSnapshot: boolean = true) => {
 		console.log('started container');
 
 		await untilEosIsReady();
+
+		// untilEosIsReady only proves nodeos answers RPC, which it does about 19s
+		// before init_blockchain.sh has installed eosio.system, run `eosio init`
+		// and activated the protocol features. Returning here would hand the
+		// caller a chain that rejects any deploy needing a post-2.0 intrinsic
+		// with `env.get_sender unresolveable`, and any system action with
+		// "system contract must first be initialized".
+		//
+		// Until 1.4.0 this wait happened by accident: createSnapshotIfNeeded()
+		// called waitForSystemContracts() before the tests ran, and it was on by
+		// default. Turning snapshots off removed the barrier and exposed that
+		// startEos had never actually waited. Now it waits regardless of any
+		// snapshot setting.
+		if (!ConfigManager.skipSystemContracts && !(await waitForSystemContracts())) {
+			throw new Error(
+				'The chain started but its system contracts never finished initializing. ' +
+					'Re-run, or set skipSystemContracts if your project does not need them.'
+			);
+		}
+
 		printReadyBanner('EOS running, admin account created.');
 		spinner.end('Started EOS docker container');
 	} catch (error) {
