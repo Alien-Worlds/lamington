@@ -1,6 +1,6 @@
 {
 	"name": "lamington",
-	"version": "1.4.1",
+	"version": "1.5.0",
 	"description": "A suite of tools to make building and testing EOS smart contracts easier. ",
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",
@@ -18,8 +18,7 @@
 		"prepublishOnly": "npm test",
 		"prepare": "npm run build",
 		"test": "TS_NODE_FILES=true mocha --require ts-node/register --ignore 'src/**/*.integration.test.ts' 'src/**/*.test.ts'",
-		"test:integration": "npm run build && npm run test:integration:snapshots && npm run test:integration:readiness",
-		"test:integration:snapshots": "TS_NODE_FILES=true mocha --require ts-node/register src/integration/snapshotLifecycle.integration.test.ts",
+		"test:integration": "npm run build && npm run test:integration:readiness",
 		"test:integration:readiness": "TS_NODE_FILES=true mocha --require ts-node/register src/integration/chainReadiness.integration.test.ts"
 	},
 	"repository": {

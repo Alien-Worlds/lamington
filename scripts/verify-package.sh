@@ -45,7 +45,7 @@ for MODULE in \
 	"lamington/lib/configManager" \
 	"lamington/lib/cli/cli-utils/runTests" \
 	"lamington/lib/cli/cli-utils/blockchainManagement" \
-	"lamington/lib/cli/cli-utils/blockchainSnapshotManagement"
+	"lamington/lib/cli/cli-utils/chainReadiness"
 do
 	if OUTPUT="$(node -e "require('$MODULE')" 2>&1)"; then
 		echo "    ok      $MODULE"

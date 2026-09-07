@@ -38,18 +38,6 @@ export interface LamingtonConfig {
 	cppFlags: string;
 	benchmark: boolean;
 	/**
-	 * Master switch for the snapshot feature. When false (the default) the chain
-	 * is always initialized from scratch and no snapshots are read or written.
-	 */
-	useSnapshots?: boolean;
-	/**
-	 * Snapshot the chain automatically once it is fully initialized. Has no
-	 * effect unless `useSnapshots` is also true.
-	 */
-	autoCreateSnapshot?: boolean;
-	/** Number of snapshots to keep */
-	snapshotRetention?: number;
-	/**
 	 * Registry holding a prebuilt chain image. Set to an empty string to always
 	 * build the image locally instead of pulling it.
 	 */
@@ -83,9 +71,6 @@ export interface DefaultLamingtonConfig {
 	skipSystemContracts: boolean;
 	cppFlags: string;
 	benchmark: boolean;
-	useSnapshots: boolean;
-	autoCreateSnapshot: boolean;
-	snapshotRetention: number;
 	imageRegistry: string;
 	containerName: string;
 	rpcPort: number;
@@ -141,9 +126,6 @@ const DEFAULT_CONFIG: DefaultLamingtonConfig = {
 	cppFlags: '',
 	benchmark: true,
 	compiledContractsSearchPaths: [],
-	useSnapshots: false,
-	autoCreateSnapshot: true,
-	snapshotRetention: 5,
 	imageRegistry: 'ghcr.io/alien-worlds',
 	containerName: 'lamington',
 	rpcPort: 8888,
@@ -394,43 +376,6 @@ export class ConfigManager {
 		return (
 			(ConfigManager.config && ConfigManager.config.compiledContractsSearchPaths) ||
 			DEFAULT_CONFIG.compiledContractsSearchPaths
-		);
-	}
-
-	/**
-	 * Whether a compatible snapshot should be restored instead of initializing a
-	 * chain from scratch. Off by default: on a current toolchain a fresh chain
-	 * initializes in roughly 20s, so restoring saves too little to be worth the
-	 * risk of running against stale chain state.
-	 */
-	static get useSnapshots(): boolean {
-		return ConfigManager.config && ConfigManager.config.useSnapshots !== undefined
-			? ConfigManager.config.useSnapshots
-			: DEFAULT_CONFIG.useSnapshots;
-	}
-
-	/**
-	 * Whether a snapshot should be created automatically once the chain is fully
-	 * initialized. `useSnapshots` is the master switch: with it off, nothing
-	 * reads or writes snapshots, so turning it off also silences creation.
-	 */
-	static get autoCreateSnapshot(): boolean {
-		if (!ConfigManager.useSnapshots) {
-			return false;
-		}
-
-		return ConfigManager.config && ConfigManager.config.autoCreateSnapshot !== undefined
-			? ConfigManager.config.autoCreateSnapshot
-			: DEFAULT_CONFIG.autoCreateSnapshot;
-	}
-
-	/**
-	 * Returns the number of snapshots to keep
-	 */
-	static get snapshotRetention(): number {
-		return (
-			(ConfigManager.config && ConfigManager.config.snapshotRetention) ||
-			DEFAULT_CONFIG.snapshotRetention
 		);
 	}
 

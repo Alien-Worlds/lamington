@@ -15,7 +15,6 @@ The Lamington library includes CLI tools and JavaScript utilities to streamline 
 - Skill level agnostic
 - TypeScript ready
 - Containerized development
-- Optional fast start-up by restoring blockchain snapshots
 - Common JavaScript testing frameworks
 - Multi-environment support
 - Simple CLI commands
@@ -106,87 +105,6 @@ $ lamington test
 
 For a full list of available JavaScript utilities, see the [API documentation](https://api.lamington.io).
 
-### Snapshots
-
-Lamington can snapshot a fully initialized chain and restore it on later runs
-instead of installing the EOSIO system contracts again.
-
-**Snapshots are off by default.** Turn them on with `useSnapshots: true` in
-`.lamingtonrc`:
-
-1. On the first run the chain initializes normally. Once the system contracts are
-   confirmed installed, a snapshot is written to `.lamington/snapshots/`.
-2. On later runs a compatible snapshot is restored instead of initializing.
-
-#### Whether it is worth turning on
-
-Measured on the current toolchain (Leap 5.0.3), over three repetitions:
-
-| | time |
-| --- | --- |
-| initialize a chain from scratch | ~21s |
-| restore from a snapshot | ~6s |
-| cost of writing the snapshot, on the run that creates it | ~6s |
-
-So restoring saves roughly 15 seconds per run. Whether that matters depends
-entirely on what your suite does *after* the chain is up. On one real project
-whose suite takes about 9 minutes, 15 seconds was inside the run-to-run noise and
-the saving was not measurable end to end.
-
-Snapshots only skip chain initialization. They do **not** skip your own
-`before` hooks, so deploying your contracts and building fixtures still happens
-on every run — which for most projects is the larger cost.
-
-Worth enabling if you start chains often and your suites are short. Not worth it
-if chain startup is a small fraction of your run.
-
-#### What a snapshot contains
-
-Only the block log (`blocks.log` and `blocks.index`). The state database,
-reversible blocks and state history are deliberately excluded: they are memory
-mapped or append-only files that cannot be safely copied out of a running node,
-and nodeos rebuilds them by replaying the block log when the snapshot is
-restored. This keeps archives small, typically around 100KB.
-
-#### When a snapshot is ignored
-
-Each snapshot records the `eos` version, the `contracts` version and a hash of
-the `genesis.json` it was created under. If any of those differ from your current
-configuration the snapshot is ignored, the chain initializes from scratch, and a
-new snapshot is taken. A snapshot must also have been taken from a fully
-initialized chain to be eligible.
-
-This means you do not have to remember to clear snapshots after changing the
-toolchain or genesis. Changing either invalidates them automatically.
-
-#### Managing snapshots
-
-```
-$ lamington snapshots list
-$ lamington snapshots create
-$ lamington snapshots create --snapshot-name my-snapshot.tar.gz
-$ lamington snapshots restore <name>
-$ lamington snapshots delete <name>
-$ lamington snapshots delete-all --force
-```
-
-`create` and `restore` act on the running container, so start the chain first.
-`delete-all` refuses to run without `--force`.
-
-#### Snapshot settings
-
-| Setting | Default | Description |
-| --- | --- | --- |
-| `useSnapshots` | `false` | Master switch. Restore a compatible snapshot instead of initializing from scratch |
-| `autoCreateSnapshot` | `true` | Snapshot the chain automatically once it is fully initialized. No effect unless `useSnapshots` is also true |
-| `snapshotRetention` | `5` | Number of snapshots to keep. Older ones are removed after a new one is written |
-
-`useSnapshots` is a master switch: with it off, nothing reads or writes snapshots,
-so the `lamington snapshots` commands above are the only way to touch them.
-
-The `lamington snapshots` CLI works regardless of the setting, so you can create
-and restore snapshots by hand without enabling the automatic behaviour.
-
 ### Initialization
 
 Initially setting up a project can be tedious and repetitive, so we've created a simple CLI method to setup a boilerplate EOSIO project with Lamington integration.
@@ -262,10 +180,6 @@ pull and builds, rather than silently using a stale image.
 Set `"imageRegistry": ""` to always build locally, for example when working
 offline.
 
-Note this is separate from snapshots. The image holds the toolchain; a snapshot
-holds chain state. They stack: pulling the image skips the build, and restoring
-a snapshot skips the chain initialization.
-
 ### Toolchain versions
 
 Lamington ships with a pinned toolchain, so a new project works without
@@ -282,12 +196,12 @@ specifying versions:
 The `eos` default is Leap rather than a legacy EOSIO release because the bundled
 system contracts import host functions (`set_parameters_packed` and
 `set_wasm_parameters_packed`) that were added after EOSIO 2.0. On an older
-`nodeos` the system contract cannot be linked and installation fails, which in
-turn means no snapshot is ever created. If you override `eos`, use a build that
-is new enough for the system contracts you intend to install.
+`nodeos` the system contract cannot be linked and installation fails, leaving a
+chain that cannot run the tests. If you override `eos`, use a build that is new
+enough for the system contracts you intend to install.
 
-Changing any of these three values invalidates existing snapshots, since they no
-longer describe the same chain.
+Changing any of these three values changes the docker image name, so a new image
+is pulled or built rather than a stale one reused.
 
 ## Running the tests
 
@@ -297,11 +211,12 @@ $ yarn verify:package     # packs the module and installs it into an empty proje
 $ yarn test:integration   # drives a real chain in docker, takes a few minutes
 ```
 
-`yarn test:integration` exercises the full snapshot lifecycle against a real
-container: system contracts installing, snapshot creation, archive contents,
-restore, and the compatibility gate. It uses its own container name and ports,
-so it will not disturb a chain you already have running. It needs docker, and
-fails rather than skipping if docker is missing.
+`yarn test:integration` drives a real container and asserts that `startEos`
+returns a chain that is genuinely usable: `eosio.system` installed and the
+protocol features activated. That is not cosmetic -- v1.4.0 returned about 19
+seconds early and was unusable for consumers. It uses its own container name and
+ports, so it will not disturb a chain you already have running. It needs docker,
+and fails rather than skipping if docker is missing.
 
 ## Contributing to Lamington
 

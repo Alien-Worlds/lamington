@@ -11,6 +11,9 @@ export const CONTRACTS_DIRECTORY = path.join(__dirname, '../../eosio-contracts')
 /** @hidden Temporary docker resource directory */
 export const TEMP_DOCKER_DIRECTORY = path.join(__dirname, '../.temp-docker');
 
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
 import { Docker, Options } from 'docker-cli-js';
 // export const docker = new Docker(new Options('default', undefined, true));
 export const docker = new Docker(new Options(undefined, undefined, true));
@@ -118,7 +121,7 @@ export const imageExists = async () => {
  * @author Kevin Brown <github.com/thekevinbrown>
  */
 
-export const startContainer = async (skipInit: boolean = false) => {
+export const startContainer = async () => {
 	try {
 		await docker.command(`network create -d bridge lamington`);
 	} catch (error) {
@@ -129,71 +132,32 @@ export const startContainer = async (skipInit: boolean = false) => {
 		if (stderr !== 'Error response from daemon: network with name lamington already exists\n') {
 			throw error;
 		}
-		// console.log(`error: ${JSON.stringify(e.stderr, null, 2)}`);
 	}
 
-	if (skipInit) {
-		// Start container in empty state for snapshot restoration
-		await docker.command(
-			`run
-				--rm
-				--name ${ConfigManager.containerName}
-				-d
-				-p ${ConfigManager.rpcPort}:8888
-				-p ${ConfigManager.stateHistoryPort}:8080
-				-p ${ConfigManager.p2pPort}:9876
-				--network=lamington
-				--platform linux/amd64
-				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
-				--mount type=bind,src="${__dirname}/../../scripts",dst=/opt/eosio/bin/scripts
-				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
-				--mount type=bind,src="${CONTRACTS_DIRECTORY}",dst=/usr/opt/eosio.contracts/build/contracts
-				-w "/opt/eosio/bin/"
-				${await dockerImageName()}
-				sleep infinity`
-				.replace(/\n/gm, '')
-				.replace(/\t/gm, ' ')
-		);
-	} else {
-		// Start container with normal initialization
-		await docker.command(
-			`run
-				--rm
-				--name ${ConfigManager.containerName}
-				-d
-				-p ${ConfigManager.rpcPort}:8888
-				-p ${ConfigManager.stateHistoryPort}:8080
-				-p ${ConfigManager.p2pPort}:9876
-				--network=lamington
-				--platform linux/amd64
-				--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
-				--mount type=bind,src="${__dirname}/../../scripts",dst=/opt/eosio/bin/scripts
-				--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
-				--mount type=bind,src="${CONTRACTS_DIRECTORY}",dst=/usr/opt/eosio.contracts/build/contracts
-				-w "/opt/eosio/bin/"
-				${await dockerImageName()}
-				/bin/bash -c "./scripts/${
-					ConfigManager.skipSystemContracts ? 'init_blockchain_wo_system.sh' : 'init_blockchain.sh'
-				}"`
-				.replace(/\n/gm, '')
-				.replace(/\t/gm, ' ')
-		);
-	}
+	await docker.command(
+		`run
+			--rm
+			--name ${ConfigManager.containerName}
+			-d
+			-p ${ConfigManager.rpcPort}:8888
+			-p ${ConfigManager.stateHistoryPort}:8080
+			-p ${ConfigManager.p2pPort}:9876
+			--network=lamington
+			--platform linux/amd64
+			--mount type=bind,src="${WORKING_DIRECTORY}",dst=/opt/eosio/bin/project
+			--mount type=bind,src="${__dirname}/../../scripts",dst=/opt/eosio/bin/scripts
+			--mount type=bind,src="${CONFIG_DIRECTORY}",dst=/mnt/dev/config
+			--mount type=bind,src="${CONTRACTS_DIRECTORY}",dst=/usr/opt/eosio.contracts/build/contracts
+			-w "/opt/eosio/bin/"
+			${await dockerImageName()}
+			/bin/bash -c "./scripts/${
+				ConfigManager.skipSystemContracts ? 'init_blockchain_wo_system.sh' : 'init_blockchain.sh'
+			}"`
+			.replace(/\n/gm, '')
+			.replace(/\t/gm, ' ')
+	);
 };
 
-export const resumeBlockchainInContainer = async () => {
-	try {
-		// Resume against the restored data directory. This deliberately does NOT
-		// run init_blockchain.sh: that script clears /mnt/dev/data and re-runs the
-		// whole chain setup, which would discard the snapshot we just restored.
-		await docker.command(
-			`exec ${ConfigManager.containerName} /bin/bash -c "./scripts/resume_blockchain.sh&"`
-		);
-	} catch (error) {
-		console.error('Failed to resume blockchain in container:', error);
-		throw error;
-	}
-};
 /**
  * Stops the current Lamington container
  * @author Kevin Brown <github.com/thekevinbrown>
@@ -229,6 +193,63 @@ export const dockerImageName = async () => {
 		ConfigManager.cdt
 	)}-contracts.${ConfigManager.contracts}.${skipSystemContracts}`;
 };
+const execFileAsync = promisify(execFile);
+
+/**
+ * Splits a build-flag string into individual arguments, honouring quotes so a
+ * flag containing a space survives as one argument.
+ *
+ * This exists so build flags never have to be handed to a shell. Flags can come
+ * from a `<contract>.lamflags` file committed to a contract repository, which
+ * makes them untrusted input: see the comment on `compile` below.
+ * @param flags Raw flag string
+ * @returns One entry per argument, empty when there is nothing to pass
+ */
+export const tokenizeBuildFlags = (flags: string): string[] => {
+	const tokens: string[] = [];
+	let current = '';
+	let quote: '"' | "'" | null = null;
+	let started = false;
+
+	for (let i = 0; i < flags.length; i++) {
+		const char = flags[i];
+
+		if (quote) {
+			if (char === quote) {
+				quote = null;
+			} else {
+				current += char;
+			}
+			continue;
+		}
+
+		if (char === '"' || char === "'") {
+			// A quote starts a token even when it turns out to be empty, so `-D""`
+			// keeps its trailing empty value rather than vanishing
+			quote = char;
+			started = true;
+			continue;
+		}
+
+		if (/\s/.test(char)) {
+			if (started || current.length > 0) {
+				tokens.push(current);
+				current = '';
+				started = false;
+			}
+			continue;
+		}
+
+		current += char;
+	}
+
+	if (started || current.length > 0) {
+		tokens.push(current);
+	}
+
+	return tokens;
+};
+
 export const compile = async ({
 	contractPath,
 	outputPath,
@@ -240,20 +261,31 @@ export const compile = async ({
 	basename: string;
 	buildFlags: string;
 }) => {
-	await docker
-		.command(
-			// Arg 1 is filename, arg 2 is contract name.
-			`exec ${ConfigManager.containerName} /opt/eosio/bin/scripts/compile_contract.sh "/${path.join(
-				'opt',
-				'eosio',
-				'bin',
-				'project',
-				contractPath
-			)}" "${outputPath}" "${basename}" "${buildFlags}"`
-		)
-		.catch((err) => {
-			spinner.fail('Failed to compile');
-			console.log(` --> ${err}`);
-			throw err;
-		});
+	// Deliberately NOT docker.command(): that takes a single string and
+	// docker-cli-js runs it through child_process.exec, i.e. a shell on the host.
+	// Interpolating build flags into that string let them escape their quotes and
+	// run as host commands. That matters because build flags are not necessarily
+	// the developer's own: a `<contract>.lamflags` file sits in the contract
+	// directory and is appended verbatim, so it arrives with the repository.
+	//
+	// execFile with an argument vector uses no shell, here or in the script it
+	// calls, so flags can only ever reach the compiler as arguments. See the
+	// regression test in dockerImageManagement.test.ts.
+	const containerPath = `/${path.join('opt', 'eosio', 'bin', 'project', contractPath)}`;
+
+	try {
+		await execFileAsync('docker', [
+			'exec',
+			ConfigManager.containerName,
+			'/opt/eosio/bin/scripts/compile_contract.sh',
+			containerPath,
+			outputPath,
+			basename,
+			...tokenizeBuildFlags(buildFlags),
+		]);
+	} catch (err) {
+		spinner.fail('Failed to compile');
+		console.log(` --> ${err}`);
+		throw err;
+	}
 };
