@@ -180,15 +180,12 @@ cleos push action eosio setpriv '["eosio.msig",1]' -p eosio
 
 
 
-# NOTE: Snapshots are created from the host after this script completes, so that
-# creation happens only once the system contracts are fully initialized.
-
 # Keep the container alive for as long as nodeos lives.
 # NOTE: do not use `fg` or `wait` here. With job control enabled (set -m) both
-# return as soon as the job merely *stops*, so SIGSTOP-ing nodeos (as snapshot
-# creation does to quiesce the data dir) would let this script run to completion
-# and kill the container. `kill -0` still succeeds for a stopped process, so
-# this loop holds through a pause and exits only once nodeos is really gone.
+# return as soon as the job merely *stops*, so anything that SIGSTOPs nodeos
+# would let this script run to completion and kill the container. `kill -0`
+# still succeeds for a stopped process, so this loop holds through a pause and
+# exits only once nodeos is really gone.
 while kill -0 "$nodeos_pid" 2>/dev/null; do
   sleep 5s
 done

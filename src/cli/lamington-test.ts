@@ -6,7 +6,6 @@ import { buildAll } from './cli-utils/contactBuilding';
 import { GitIgnoreManager } from '../gitignoreManager';
 import { ConfigManager } from '../configManager';
 import { sleep } from '../utils';
-import { createSnapshotIfNeeded } from './cli-utils/blockchainSnapshotManagement';
 const { Command } = require('commander');
 const program = new Command();
 
@@ -54,7 +53,7 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 
 	// Start an EOSIO instance if not running
 	if (!(await eosIsReady())) {
-		await startEos(true); // Enable snapshots
+		await startEos();
 	}
 
 	// Start compiling smart contracts
@@ -63,9 +62,6 @@ const run = async (options: { grep?: string | undefined } | undefined) => {
 	} else {
 		await sleep(500);
 	}
-
-	// Snapshot the fully initialized chain so later runs can skip initialization
-	await createSnapshotIfNeeded();
 
 	// Begin running tests
 	await runTests(options);

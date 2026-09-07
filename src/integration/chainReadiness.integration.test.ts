@@ -20,14 +20,10 @@ import * as path from 'path';
  * `env.get_sender unresolveable` on any contract needing a post-2.0 intrinsic,
  * and "system contract must first be initialized" on any system action.
  *
- * Until 1.4.0 the wait happened by accident: createSnapshotIfNeeded() called
- * waitForSystemContracts() before tests ran, and snapshots were on by default.
- * Defaulting them off removed the barrier and revealed that startEos had never
- * waited.
- *
- * **This suite must keep `useSnapshots` false.** The snapshot lifecycle suite
- * pins it true, which restores the accidental barrier and is precisely why that
- * suite did not catch the regression.
+ * Until 1.4.0 the wait happened by accident, inside a snapshot-creation step
+ * that ran before the tests and happened to poll for the same condition. That
+ * feature has since been removed, so this wait is now explicit in startEos and
+ * this suite is the only thing guarding it.
  *
  * Runs under `yarn test:integration`. Needs docker.
  *
@@ -45,10 +41,6 @@ import * as path from 'path';
 
 /** Its own container name and ports, so a developer's chain is untouched */
 const PROJECT_CONFIG = {
-	// Deliberately false: with snapshots on, snapshot creation waits for the
-	// system contracts and this test can no longer fail.
-	useSnapshots: false,
-	autoCreateSnapshot: false,
 	containerName: 'lamington-readiness',
 	rpcPort: 8866,
 	stateHistoryPort: 18066,
@@ -64,7 +56,7 @@ const projectDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'lamington-readin
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required lazily, after the chdir, and from lib/ rather than src/ for the same
-// reasons documented in snapshotLifecycle.integration.test.ts: cli-utils
+// reasons noted below: cli-utils
 // captures WORKING_DIRECTORY at import time, and CONTRACTS_DIRECTORY only
 // exists in the built layout.
 let ConfigManager: any;
@@ -114,15 +106,6 @@ describe('chain readiness on startEos', function () {
 		dockerImageManagement = require('../../lib/cli/cli-utils/dockerImageManagement');
 
 		await ConfigManager.loadConfigFromDisk();
-
-		assert.isFalse(
-			ConfigManager.useSnapshots,
-			'this suite is only meaningful with snapshots off'
-		);
-		assert.isFalse(
-			ConfigManager.autoCreateSnapshot,
-			'snapshot creation would reintroduce the wait being tested'
-		);
 
 		await blockchainManagement.startEos(false);
 	});

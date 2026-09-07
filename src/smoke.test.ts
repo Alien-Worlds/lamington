@@ -5,7 +5,7 @@ import * as path from 'path';
 /**
  * Load-time smoke tests.
  *
- * These exist because a bug that crashed `lamington snapshots` on load shipped
+ * These exist because a bug that crashed a subcommand on load shipped
  * unnoticed: the CLI declared an option named `name`, which clashes with
  * commander's own `Command.name`, so the command threw before running any of
  * its code. Nothing in the suite loaded that file, so nothing caught it.
@@ -31,7 +31,6 @@ const LIBRARY_MODULES = [
 	'./contracts',
 	'./cli/cli-utils/cli-utils',
 	'./cli/cli-utils/blockchainManagement',
-	'./cli/cli-utils/blockchainSnapshotManagement',
 	'./cli/cli-utils/dockerImageManagement',
 	'./cli/cli-utils/contactBuilding',
 	'./cli/cli-utils/contractCompiling',
@@ -50,7 +49,6 @@ const CLI_ENTRY_POINTS = [
 	'cli/index.ts',
 	'cli/lamington-build.ts',
 	'cli/lamington-test.ts',
-	'cli/lamington-snapshots.ts',
 ];
 
 describe('smoke', function () {

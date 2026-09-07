@@ -6,16 +6,11 @@ import {
 	pullImage,
 	imageExists,
 	startContainer,
-	resumeBlockchainInContainer,
 	versionFromUrl,
 } from './dockerImageManagement';
 import * as spinner from './logIndicator';
 import { ConfigManager } from '../../configManager';
-import {
-	restoreSnapshot,
-	findCompatibleSnapshot,
-	waitForSystemContracts,
-} from './blockchainSnapshotManagement';
+import { waitForSystemContracts } from './chainReadiness';
 
 /** @hidden Maximum number of EOS connection attempts before fail */
 export const MAX_CONNECTION_ATTEMPTS = 40;
@@ -45,62 +40,10 @@ const printReadyBanner = (status: string) => {
 `);
 };
 
-export const startEos = async (useSnapshot: boolean = true) => {
-	// spinner.create('Starting EOS docker container');
-	// Ensure an EOSIO build image exists
+export const startEos = async () => {
 	console.log('Starting EOS docker container');
 	console.log('ensure an EOSIO build image exists');
 
-	// Restoring has to be asked for by the caller and enabled in config
-	if (useSnapshot && ConfigManager.useSnapshots) {
-		const compatibleSnapshot = await findCompatibleSnapshot();
-
-		if (compatibleSnapshot) {
-			console.log(`Found compatible snapshot: ${compatibleSnapshot.name}`);
-
-			// Start container in empty state for snapshot restoration
-			console.log('Starting container in empty state for snapshot restoration...');
-			const containerStartTime = Date.now();
-			await startContainer(true); // Skip initialization for snapshot restoration
-			console.log(`Container started in ${Date.now() - containerStartTime}ms`);
-
-			// Wait a short time for container to be ready
-			console.log('Waiting briefly for container to stabilize...');
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-
-			console.log(`Starting snapshot restoration from: ${compatibleSnapshot.name}`);
-			const restoreStartTime = Date.now();
-			const restoreSuccess = await restoreSnapshot(compatibleSnapshot.name);
-			const restoreDuration = Date.now() - restoreStartTime;
-			console.log(
-				`Snapshot restoration completed in ${restoreDuration}ms, success: ${restoreSuccess}`
-			);
-
-			if (restoreSuccess) {
-				console.log('Blockchain restored from snapshot successfully');
-
-				// Now start the blockchain process in the container
-				console.log('Resuming blockchain process after snapshot restoration...');
-				await resumeBlockchainInContainer();
-
-				// Wait for EOS to be ready
-				console.log('Waiting for EOS to be ready after starting blockchain...');
-				await untilEosIsReady(30);
-
-				printReadyBanner('EOS running from snapshot, admin account created.');
-				spinner.end('Started EOS docker container from snapshot');
-				return;
-			} else {
-				console.log('Snapshot restoration failed, but container is running');
-				// Container is already running, just continue
-				printReadyBanner('EOS running, admin account created.');
-				spinner.end('Started EOS docker container');
-				return;
-			}
-		} else {
-			console.log('No compatible snapshot found, proceeding with full initialization');
-		}
-	}
 	if (!(await imageExists())) {
 		// A published image for this exact toolchain is a minute's download against
 		// several minutes of building, so try that first and fall back silently.
@@ -135,11 +78,10 @@ export const startEos = async (useSnapshot: boolean = true) => {
 		// with `env.get_sender unresolveable`, and any system action with
 		// "system contract must first be initialized".
 		//
-		// Until 1.4.0 this wait happened by accident: createSnapshotIfNeeded()
-		// called waitForSystemContracts() before the tests ran, and it was on by
-		// default. Turning snapshots off removed the barrier and exposed that
-		// startEos had never actually waited. Now it waits regardless of any
-		// snapshot setting.
+		// This wait used to happen by accident, inside a snapshot-creation step
+		// that ran before the tests and polled for the same condition. Removing
+		// that feature made the omission visible: startEos had never waited. Do
+		// not drop this without replacing it -- v1.4.0 shipped without it.
 		if (!ConfigManager.skipSystemContracts && !(await waitForSystemContracts())) {
 			throw new Error(
 				'The chain started but its system contracts never finished initializing. ' +
