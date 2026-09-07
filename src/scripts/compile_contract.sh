@@ -12,8 +12,10 @@ addedBuildFlags="$4"
 # Ensure the output directory exists
 mkdir -p "project/$outputPath"
 
-# compile smart contract to wasm and abi files using EOSIO.CDT (Contract Development Toolkit)
-# https://github.com/EOSIO/eosio.cdt
-eosio-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" --contract "$contractName" $4
+# Compile the smart contract to WASM and ABI using Antelope CDT.
+# Add the contract's include directory so headers such as
+# <contract.name/contract.name.hpp> can be resolved.
+# https://github.com/AntelopeIO/cdt
+cdt-cpp -abigen "$filename" -o "project/$outputPath/$contractName.wasm" -I "project/contracts/$contractName/include" --contract "$contractName" $4
 
 
