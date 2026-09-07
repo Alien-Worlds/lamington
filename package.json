@@ -18,7 +18,9 @@
 		"prepublishOnly": "npm test",
 		"prepare": "npm run build",
 		"test": "TS_NODE_FILES=true mocha --require ts-node/register --ignore 'src/**/*.integration.test.ts' 'src/**/*.test.ts'",
-		"test:integration": "npm run build && TS_NODE_FILES=true mocha --require ts-node/register 'src/**/*.integration.test.ts'"
+		"test:integration": "npm run build && npm run test:integration:snapshots && npm run test:integration:readiness",
+		"test:integration:snapshots": "TS_NODE_FILES=true mocha --require ts-node/register src/integration/snapshotLifecycle.integration.test.ts",
+		"test:integration:readiness": "TS_NODE_FILES=true mocha --require ts-node/register src/integration/chainReadiness.integration.test.ts"
 	},
 	"repository": {
 		"type": "git",

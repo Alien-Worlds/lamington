@@ -30,6 +30,17 @@ import * as path from 'path';
  * suite did not catch the regression.
  *
  * Runs under `yarn test:integration`. Needs docker.
+ *
+ * **Each integration suite must run in its own mocha process**, which is why
+ * `test:integration` invokes them one at a time rather than with a glob.
+ * `cli-utils` captures `WORKING_DIRECTORY = process.cwd()` at import time, and
+ * that value decides which directory is bind-mounted into the container. Two
+ * suites in one process means the first one to load pins it for both, so the
+ * second mounts the wrong directory -- and once this suite removes its temp
+ * project, the mount source no longer exists at all:
+ *
+ *     docker: invalid mount config for type "bind":
+ *       bind source path does not exist: /tmp/lamington-readiness-hJtxmV
  */
 
 /** Its own container name and ports, so a developer's chain is untouched */
