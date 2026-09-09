@@ -45,6 +45,13 @@ export const runTests = async (options?: { grep?: string }) => {
 		);
 	});
 
+	// Sort the files so the suite order is deterministic. glob v7 sorted its
+	// results by default; v10 returns them in filesystem order, so without this
+	// the order tests run in depends on the machine, and any suite that shares
+	// state with another can pass on one host and fail on the next. Compared by
+	// code point rather than localeCompare, which varies with the host locale.
+	filteredFiles.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
 	// Instantiate a Mocha instance.
 	const mocha = new Mocha();
 	if (options?.grep) {
