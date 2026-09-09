@@ -53,6 +53,84 @@ jobs:
       # declared in the wrong section. That mistake shipped in 1.2.0 and 1.3.0.
       - run: yarn verify:package
 
+  compile:
+    name: Contract compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.4'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # The CLI is driven from lib/, the way a consumer gets it.
+      - run: yarn build
+
+      - name: Derive the chain image tag
+        id: image
+        run: echo "tag=$(node scripts/chain-image.js --tag)" >> "$GITHUB_OUTPUT"
+
+      - name: Use the prebuilt chain image if there is one
+        continue-on-error: true
+        env:
+          TAG: ${{ steps.image.outputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          REMOTE="ghcr.io/${OWNER,,}/lamington-chain:${TAG}"
+          docker pull "$REMOTE"
+          docker tag "$REMOTE" "lamington:${TAG}"
+
+      # Compiles a contract the way a consumer does, from a project directory of
+      # its own. This exists because nothing else in CI ever reaches the
+      # compiler: the unit tests never touch docker, verify:package only runs
+      # --help, and the integration suite starts a chain without building
+      # anything. Issue #69 -- contracts compile as root, so the output
+      # directory is root-owned and lamington cannot write its own .mod.json
+      # stamp into it -- reached a consumer's CI precisely because of that gap.
+      #
+      # It cannot be reproduced on macOS: Docker Desktop maps ownership through
+      # its VM, so this only fails on a Linux host with native docker.
+      #
+      # The fixture config is deliberately near-empty so the toolchain matches
+      # DEFAULT_CONFIG, and therefore the prebuilt image pulled above. The
+      # repository's own .lamingtonrc pins an older toolchain and would miss it.
+      #
+      # lamington-build.js is invoked directly rather than through
+      # `lamington build`: dispatching subcommands by path is broken until #61
+      # lands, and that is a separate bug from the one under test here.
+      - name: Compile a contract as a consumer would
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/compile-fixture"
+          mkdir -p "$WORK/contracts"
+          cp contracts/example.cpp "$WORK/contracts/"
+          # A container name and ports of its own, so this never collides with
+          # another chain -- including when someone runs these steps locally.
+          cat > "$WORK/.lamingtonrc" <<'JSON'
+          {
+            "outDir": "artifacts",
+            "keepAlive": false,
+            "containerName": "lamington-compile",
+            "rpcPort": 8855,
+            "stateHistoryPort": 18055,
+            "p2pPort": 19855
+          }
+          JSON
+          cd "$WORK"
+          node "$GITHUB_WORKSPACE/lib/cli/lamington-build.js"
+
+      # Evidence for the ownership question in #69, and useful whether the step
+      # above passed or failed.
+      - name: Report artifact ownership
+        if: always()
+        run: |
+          echo "runner uid:gid = $(id -u):$(id -g)"
+          find "$RUNNER_TEMP/compile-fixture/artifacts" -maxdepth 4 -exec ls -land {} + 2>/dev/null || \
+            echo "no artifacts directory was produced"
+
   integration:
     name: Chain integration
     runs-on: ubuntu-latest
