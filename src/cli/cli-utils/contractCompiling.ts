@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as mkdirp from 'mkdirp';
 import { ConfigManager } from '../../configManager';
 import * as spinner from './logIndicator';
 import { exists, readFile, statFile } from './cli-utils';
@@ -101,6 +102,25 @@ export const compileContract = async (
 		spinner.end(`Source unchanged. Skipping Compile: ` + contractPath);
 		return false;
 	}
+	// Create the output directory here rather than leaving it to the container.
+	//
+	// compile() runs docker exec without --user, so eosio-cpp runs as root. On a
+	// Linux host with native docker the directory it creates is then root-owned,
+	// and fileTracker.save() below -- which runs here, on the host, as the
+	// invoking user -- cannot write .mod.json into it:
+	//
+	//   Error: EACCES: permission denied, open
+	//     'artifacts/compiled_contracts/<name>/.mod.json'
+	//
+	// Creating it first means it is owned by the user who has to write to it.
+	// The .wasm and .abi inside are still written as root, which is harmless:
+	// eosio-cpp overwrites its own files on the next run, and nothing on the
+	// host reads them by handle.
+	//
+	// Not reproducible on macOS -- Docker Desktop maps ownership through its VM.
+	// The `Contract compile` CI job exists to cover this. See issue #69.
+	await mkdirp(outputPath, {});
+
 	// Run the compile contract script inside our docker container.
 	await compile({ contractPath, outputPath, basename, buildFlags });
 
