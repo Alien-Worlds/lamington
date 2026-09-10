@@ -250,6 +250,39 @@ export const tokenizeBuildFlags = (flags: string): string[] => {
 	return tokens;
 };
 
+/**
+ * `docker exec` options that run the compiler as the invoking user.
+ *
+ * Without these the compiler runs as root, which is how #69 happened: on a
+ * Linux host with native docker every file it writes is root-owned. The output
+ * directory is now created host-side so the build no longer breaks, but the
+ * .wasm and .abi it produces are still root-owned, which a developer then
+ * cannot delete without sudo.
+ *
+ * Applied to the compile exec only, never to `docker run`. nodeos shares that
+ * container and writes to /mnt/dev/data as root; starting it as another user
+ * would break the chain rather than the compiler.
+ *
+ * Two consequences of running as a uid the image does not know about:
+ *
+ *   - It has no entry in the container's /etc/passwd. Tools that look the user
+ *     up can fail; eosio-cpp does not.
+ *   - $HOME still points at /root from the image, which the uid cannot write.
+ *     HOME is redirected to /tmp so anything wanting a cache or temp directory
+ *     has somewhere to put it.
+ *
+ * Returns nothing on Windows, where process.getuid does not exist and the
+ * ownership problem does not arise.
+ * @returns Arguments to splice into the docker exec invocation
+ */
+export const compileUserArgs = (): string[] => {
+	if (typeof process.getuid !== 'function' || typeof process.getgid !== 'function') {
+		return [];
+	}
+
+	return ['--user', `${process.getuid()}:${process.getgid()}`, '--env', 'HOME=/tmp'];
+};
+
 export const compile = async ({
 	contractPath,
 	outputPath,
@@ -276,6 +309,7 @@ export const compile = async ({
 	try {
 		await execFileAsync('docker', [
 			'exec',
+			...compileUserArgs(),
 			ConfigManager.containerName,
 			'/opt/eosio/bin/scripts/compile_contract.sh',
 			containerPath,
