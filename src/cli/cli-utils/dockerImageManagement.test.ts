@@ -3,7 +3,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { compile, tokenizeBuildFlags, versionFromUrl } from './dockerImageManagement';
+import {
+	compile,
+	compileUserArgs,
+	tokenizeBuildFlags,
+	versionFromUrl,
+} from './dockerImageManagement';
 
 describe('tokenizeBuildFlags', () => {
 	it('returns nothing for an empty or blank string', () => {
@@ -130,6 +135,47 @@ describe('versionFromUrl', () => {
 			'https://h/d/v1.2.3 -x/f.deb',
 		]) {
 			assert.notMatch(versionFromUrl(url), /[^A-Za-z0-9.]/, `unsafe version from ${url}`);
+		}
+	});
+});
+
+describe('compileUserArgs', () => {
+	/**
+	 * The compiler used to run as root, so on a Linux host every artifact it
+	 * wrote was root-owned and a developer could not delete them without sudo.
+	 * See issue #69.
+	 */
+	it('runs the compiler as the invoking user on posix', () => {
+		const args = compileUserArgs();
+
+		assert.deepEqual(args, [
+			'--user',
+			`${process.getuid!()}:${process.getgid!()}`,
+			'--env',
+			'HOME=/tmp',
+		]);
+	});
+
+	it('redirects HOME, because the uid cannot write the image default', () => {
+		// The uid has no entry in the container's /etc/passwd and $HOME still
+		// points at /root, which it cannot write.
+		assert.include(compileUserArgs(), 'HOME=/tmp');
+	});
+
+	it('returns nothing where process.getuid does not exist', () => {
+		// Windows. Cannot be reached by running the suite there, so the absence
+		// is simulated rather than left untested -- passing --user with an
+		// undefined uid would produce `--user undefined:undefined`.
+		const realGetuid = process.getuid;
+		const realGetgid = process.getgid;
+		try {
+			delete (process as { getuid?: unknown }).getuid;
+			delete (process as { getgid?: unknown }).getgid;
+
+			assert.deepEqual(compileUserArgs(), []);
+		} finally {
+			(process as { getuid?: unknown }).getuid = realGetuid;
+			(process as { getgid?: unknown }).getgid = realGetgid;
 		}
 	});
 });
