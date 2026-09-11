@@ -18,6 +18,43 @@ interface InitArgs {
 /**
  * Manages client connection and communication with a local EOSIO node
  */
+/**
+ * Base expiry, in seconds, for a transaction lamington sends.
+ */
+const BASE_EXPIRE_SECONDS = 30;
+
+/**
+ * How many distinct expiry values to cycle through. Two identical actions have
+ * to fall in the same 500ms block *and* be more than this many transactions
+ * apart to collide again, which no realistic test does.
+ */
+const EXPIRE_SECONDS_SPREAD = 60;
+
+/** @hidden Incremented per transaction. Deliberately not random, so a failing run reproduces. */
+let expiryCounter = 0;
+
+/**
+ * Returns the expiry to use for the next transaction, varying it per call.
+ *
+ * Without this, two identical actions sent close together produce a
+ * byte-identical transaction and nodeos rejects the second as a duplicate:
+ *
+ *   - `blocksBehind: 1` resolves to the same reference block for both, because
+ *     blocks are 500ms apart.
+ *   - `expireSeconds` is whole seconds, so both get the same expiration.
+ *
+ * The transaction never reaches the contract, and the failure names a duplicate
+ * that does not exist in the test source -- the actions only have to be
+ * identical, not intentionally repeated. Varying the expiry changes the packed
+ * bytes, so the hash differs.
+ *
+ * A caller passing `expireSeconds` explicitly still overrides this.
+ * See issue #75.
+ * @returns Seconds until expiry for the next transaction
+ */
+export const nextExpireSeconds = (): number =>
+	BASE_EXPIRE_SECONDS + (expiryCounter++ % EXPIRE_SECONDS_SPREAD);
+
 export class EOSManager {
 	/** Defaults to `eosio` administration account */
 	static adminAccount: Account;
@@ -108,7 +145,10 @@ export class EOSManager {
 			logMessage?: string;
 		}
 	) => {
-		const flattenedOptions = Object.assign({ blocksBehind: 1, expireSeconds: 30 }, options);
+		const flattenedOptions = Object.assign(
+			{ blocksBehind: 1, expireSeconds: nextExpireSeconds() },
+			options
+		);
 
 		const transactionTimer = timer();
 
