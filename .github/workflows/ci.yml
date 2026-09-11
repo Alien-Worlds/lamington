@@ -122,14 +122,36 @@ jobs:
           cd "$WORK"
           node "$GITHUB_WORKSPACE/lib/cli/lamington-build.js"
 
-      # Evidence for the ownership question in #69, and useful whether the step
-      # above passed or failed.
-      - name: Report artifact ownership
+      # Asserts rather than reports. This failure is structurally invisible on
+      # macOS -- Docker Desktop maps ownership through its VM -- so CI is the
+      # only place a regression of #69 could ever appear. Printing alone would
+      # let one scroll past inside a green run, and it would come back as a pile
+      # of unexplained EACCES failures rather than a named cause.
+      - name: Assert build artifacts belong to the build user
         if: always()
         run: |
+          set -uo pipefail
+          ARTIFACTS="$RUNNER_TEMP/compile-fixture/artifacts"
+
           echo "runner uid:gid = $(id -u):$(id -g)"
-          find "$RUNNER_TEMP/compile-fixture/artifacts" -maxdepth 4 -exec ls -land {} + 2>/dev/null || \
+
+          if [ ! -d "$ARTIFACTS" ]; then
             echo "no artifacts directory was produced"
+            exit 0
+          fi
+
+          find "$ARTIFACTS" -maxdepth 4 -exec ls -land {} +
+
+          FOREIGN="$(find "$ARTIFACTS" -not -user "$(id -u)" -print)"
+          if [ -n "$FOREIGN" ]; then
+            echo "::error::Build artifacts are not owned by the build user. This is a"
+            echo "::error::regression of #69: the compiler is running as root again, so a"
+            echo "::error::developer on Linux cannot delete their own build output."
+            echo "$FOREIGN"
+            exit 1
+          fi
+
+          echo "all build artifacts owned by $(id -u)"
 
   integration:
     name: Chain integration
